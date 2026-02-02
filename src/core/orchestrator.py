@@ -4,6 +4,7 @@ from ..agents.unit_static_agent import UnitStaticAgent
 from ..agents.review_agent import ReviewAgent
 from ..agents.functional_agent import FunctionalAgent
 from ..agents.e2e_agent import E2EAgent
+from ..agents.security_agent import SecurityAgent
 
 class QAOrchestrator:
     """Sets up and manages the LangGraph for the QA organization."""
@@ -13,6 +14,7 @@ class QAOrchestrator:
         self.unit_static_agent = UnitStaticAgent()
         self.functional_agent = FunctionalAgent()
         self.e2e_agent = E2EAgent()
+        self.security_agent = SecurityAgent()
         self.review_agent = ReviewAgent()
         self.workflow = StateGraph(QAOrganizationState)
         self._build_graph()
@@ -25,6 +27,7 @@ class QAOrchestrator:
         self.workflow.add_node("unit_static_node", self._unit_static_node)
         self.workflow.add_node("functional_node", self._functional_node)
         self.workflow.add_node("e2e_node", self._e2e_node)
+        self.workflow.add_node("security_node", self._security_node)
         self.workflow.add_node("reviewer", self._reviewer_node)
         self.workflow.add_node("finalizer", self._finalizer_node)
         
@@ -39,6 +42,7 @@ class QAOrchestrator:
                 "unit_static": "unit_static_node",
                 "functional": "functional_node",
                 "e2e": "e2e_node",
+                "security": "security_node",
                 "end": "finalizer"
             }
         )
@@ -46,6 +50,7 @@ class QAOrchestrator:
         self.workflow.add_edge("unit_static_node", "reviewer")
         self.workflow.add_edge("functional_node", "reviewer")
         self.workflow.add_edge("e2e_node", "reviewer")
+        self.workflow.add_edge("security_node", "reviewer")
         self.workflow.add_edge("reviewer", "finalizer")
         self.workflow.add_edge("finalizer", END)
 
@@ -62,6 +67,8 @@ class QAOrchestrator:
             return "functional"
         if "E2E" in mission.target_agents:
             return "e2e"
+        if "Security" in mission.target_agents:
+            return "security"
         
         return "end"
 
@@ -94,6 +101,12 @@ class QAOrchestrator:
         automation = await self.e2e_agent.generate_automation(journeys)
         
         report = f"--- Critical User Journeys ---\n{journeys}\n\n--- Playwright Automation ---\n{automation}"
+        return {"reports": [report]}
+
+    async def _security_node(self, state: QAOrganizationState) -> Dict[str, Any]:
+        """Node for the SecurityAgent."""
+        audit = await self.security_agent.perform_security_audit(state["input"])
+        report = f"--- Security Audit Findings ---\n{audit}"
         return {"reports": [report]}
 
     async def _reviewer_node(self, state: QAOrganizationState) -> Dict[str, Any]:
