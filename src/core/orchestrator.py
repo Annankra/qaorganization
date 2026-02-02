@@ -2,6 +2,7 @@ from .state import QAOrganizationState
 from ..agents.qa_lead_agent import QALeadAgent
 from ..agents.unit_static_agent import UnitStaticAgent
 from ..agents.review_agent import ReviewAgent
+from ..agents.functional_agent import FunctionalAgent
 
 class QAOrchestrator:
     """Sets up and manages the LangGraph for the QA organization."""
@@ -9,6 +10,7 @@ class QAOrchestrator:
     def __init__(self):
         self.lead_agent = QALeadAgent()
         self.unit_static_agent = UnitStaticAgent()
+        self.functional_agent = FunctionalAgent()
         self.review_agent = ReviewAgent()
         self.workflow = StateGraph(QAOrganizationState)
         self._build_graph()
@@ -19,6 +21,7 @@ class QAOrchestrator:
         # Define Nodes
         self.workflow.add_node("lead_planner", self._lead_planner_node)
         self.workflow.add_node("unit_static_node", self._unit_static_node)
+        self.workflow.add_node("functional_node", self._functional_node)
         self.workflow.add_node("reviewer", self._reviewer_node)
         self.workflow.add_node("finalizer", self._finalizer_node)
         
@@ -31,11 +34,13 @@ class QAOrchestrator:
             self._route_tasks,
             {
                 "unit_static": "unit_static_node",
+                "functional": "functional_node",
                 "end": "finalizer"
             }
         )
         
         self.workflow.add_edge("unit_static_node", "reviewer")
+        self.workflow.add_edge("functional_node", "reviewer")
         self.workflow.add_edge("reviewer", "finalizer")
         self.workflow.add_edge("finalizer", END)
 
@@ -45,9 +50,11 @@ class QAOrchestrator:
         if not mission or not mission.target_agents:
             return "end"
         
-        # Simple routing logic for now: pick the first available agent type we support
+        # Simple routing logic for now
         if "UnitStatic" in mission.target_agents:
             return "unit_static"
+        if "Functional" in mission.target_agents:
+            return "functional"
         
         return "end"
 
@@ -57,6 +64,12 @@ class QAOrchestrator:
         lint_report = await self.unit_static_agent.run_lint(state["input"])
         coverage_report = await self.unit_static_agent.analyze_coverage()
         report = f"--- Unit & Static Analysis Report ---\n{lint_report}\n{coverage_report}"
+        return {"reports": [report]}
+
+    async def _functional_node(self, state: QAOrganizationState) -> Dict[str, Any]:
+        """Node for the FunctionalAgent."""
+        scenarios = await self.functional_agent.generate_test_plan(state["input"])
+        report = f"--- Functional Test Scenarios ---\n{scenarios}"
         return {"reports": [report]}
 
     async def _reviewer_node(self, state: QAOrganizationState) -> Dict[str, Any]:
