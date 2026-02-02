@@ -5,6 +5,7 @@ from langchain.schema import SystemMessage, HumanMessage
 import logging
 from .tool_registry import registry, ToolResult
 from .memory_manager import MemoryManager, MemoryEntry
+from .feedback_loop import FeedbackLoop
 
 logger = logging.getLogger("BaseAgent")
 
@@ -27,13 +28,20 @@ class BaseAgent:
         self.role_description = role_description
         self.llm = ChatOpenAI(model=model_name, temperature=temperature)
         self.memory_manager = MemoryManager(agent_name=name, storage_dir=memory_dir)
+        self.feedback_loop = FeedbackLoop(self.memory_manager)
         self.tools = registry
 
     def add_to_memory(self, role: str, content: str):
         self.memory_manager.add_entry(role=role, content=content)
 
     def get_system_prompt(self) -> str:
-        return f"You are {self.name}, {self.role_description}. Use the tools available to you to complete your tasks."
+        return f"""
+        You are {self.name}.
+        Role: {self.role_description}
+        
+        Use the tools available to you to complete your tasks.
+        Focus on providing high-quality, actionable QA insights.
+        """
 
     async def chat(self, user_input: str) -> str:
         """Simple chat interface for the agent."""

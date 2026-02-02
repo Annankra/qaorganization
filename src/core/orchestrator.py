@@ -7,6 +7,7 @@ from ..agents.e2e_agent import E2EAgent
 from ..agents.security_agent import SecurityAgent
 from ..agents.performance_agent import PerformanceAgent
 from ..agents.eval_agent import EvalAgent
+from ..agents.reporting_agent import ReportingAgent
 from ..skills.knowledge_ingestion_skill import KnowledgeIngestionSkill
 
 class QAOrchestrator:
@@ -20,6 +21,7 @@ class QAOrchestrator:
         self.security_agent = SecurityAgent()
         self.performance_agent = PerformanceAgent()
         self.eval_agent = EvalAgent()
+        self.reporting_agent = ReportingAgent()
         self.ingestion_skill = KnowledgeIngestionSkill()
         self.review_agent = ReviewAgent()
         self.workflow = StateGraph(QAOrganizationState)
@@ -158,15 +160,17 @@ class QAOrchestrator:
 
     async def _finalizer_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node to aggregate all reports and conclude the mission."""
-        summary = f"QA Mission complete for {mission.priority} priority task. " if (mission := state.get("mission")) else "Mission failed."
-        reports_summary = "\n".join(state.get("reports", []))
-        final_text = f"{summary}\n\nReports:\n{reports_summary}"
+        # Use Reporting Agent to synthesize everything
+        final_summary = await self.reporting_agent.generate_final_summary(
+            reports=state.get("reports", []),
+            input_data=state["input"]
+        )
         
         # Save to Knowledge Base for learning
         mission_id = f"mission_{hash(state['input'])}"
-        await self.ingestion_skill.run(mission_id, final_text)
+        await self.ingestion_skill.run(mission_id, final_summary)
         
-        return {"final_report": final_text}
+        return {"final_report": final_summary}
 
     def compile(self):
         return self.workflow.compile()
