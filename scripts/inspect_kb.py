@@ -27,6 +27,26 @@ def list_docs(limit=10):
         print(f"Content: {doc.page_content[:200]}...")
         print("-" * 50)
 
+def show_stats():
+    print("\n--- Knowledge Base Statistics ---\n")
+    if not kb.vector_store:
+        print("Knowledge Base is empty.")
+        return
+    
+    count = len(kb.vector_store.docstore._dict)
+    print(f"Total Documents: {count}")
+    
+    # Analyze by type if metadata exists
+    types = {}
+    for doc_id in kb.vector_store.docstore._dict:
+        doc = kb.vector_store.docstore.search(doc_id)
+        d_type = doc.metadata.get("type", "unknown")
+        types[d_type] = types.get(d_type, 0) + 1
+    
+    for d_type, d_count in types.items():
+        print(f" - {d_type}: {d_count}")
+    print("-" * 33)
+
 def search_kb(query, k=3):
     print(f"\n--- Searching KB for: '{query}' ---\n")
     results = kb.search(query, k=k)
@@ -49,6 +69,9 @@ def main():
     list_parser = subparsers.add_parser("list", help="List recent documents")
     list_parser.add_argument("--limit", type=int, default=10, help="Number of docs to show")
 
+    # Stats command
+    subparsers.add_parser("stats", help="Show KB statistics")
+
     # Search command
     search_parser = subparsers.add_parser("search", help="Search the KB")
     search_parser.add_argument("query", type=str, help="Search query")
@@ -58,6 +81,8 @@ def main():
 
     if args.command == "list":
         list_docs(args.limit)
+    elif args.command == "stats":
+        show_stats()
     elif args.command == "search":
         search_kb(args.query, args.k)
     else:
