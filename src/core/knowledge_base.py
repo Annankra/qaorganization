@@ -15,9 +15,9 @@ class KnowledgeBase:
         self.embeddings = OpenAIEmbeddings()
         self.vector_store = None
         
-        if os.path.exists(index_path):
-            self.vector_store = FAISS.load_local(index_path, self.embeddings, allow_dangerous_deserialization=True)
-            logger.info(f"Loaded existing index from {index_path}")
+        if os.path.exists(self.index_path):
+            self.vector_store = FAISS.load_local(self.index_path, self.embeddings, allow_dangerous_deserialization=True)
+            logger.info(f"Loaded existing index from {self.index_path}")
 
     def add_documents(self, documents: List[Document]):
         """Adds documents to the vector store."""
