@@ -1,6 +1,10 @@
 from ..core.base_agent import BaseAgent
+from ..skills.testrail_sync_skill import TestRailSyncSkill
+from ..core.tool_registry import registry
 from typing import List, Dict, Any, Optional
 import os
+import json
+import datetime
 
 class ReportingAgent(BaseAgent):
     """Specialist agent for aggregating and synthesizing QA mission reports."""
@@ -11,6 +15,27 @@ class ReportingAgent(BaseAgent):
             name=name,
             role_description="Expert in technical communication and QA metrics summary. Responsible for creating executive reports."
         )
+        self.testrail_skill = TestRailSyncSkill()
+        registry.register_skill(self.testrail_skill)
+
+    async def sync_to_testrail(self, reports: List[str]):
+        """Parses reports and syncs identified case results to TestRail."""
+        # Simple extraction logic: look for "Case ID: \d+" in reports
+        # In a real scenario, this would be more structured.
+        results = []
+        for r in reports:
+            # Mock extraction for demonstration
+            if "Case ID: 101" in r:
+                results.append({"case_id": 101, "status_id": 1 if "PASS" in r else 5, "comment": "Verified via agent"})
+        
+        if results:
+            return await self.testrail_skill.run(
+                project_id=1, # Default project
+                suite_id=1,   # Default suite
+                run_name=f"Mission Run {datetime.datetime.now().strftime('%Y-%m-%d')}",
+                results=results
+            )
+        return "No TestRail cases identified in reports."
 
     async def generate_final_summary(self, reports: List[str], input_data: str) -> str:
         """Synthesizes multiple specialist reports into a single executive summary."""

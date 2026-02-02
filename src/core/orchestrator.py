@@ -209,6 +209,10 @@ class QAOrchestrator:
         await self.ingestion_skill.run(mission_id, final_summary)
         
         self._save_artifact("final_mission_report", final_summary)
+
+        # 3. Synchronize with TestRail
+        tr_sync_status = await self.reporting_agent.sync_to_testrail(state.get("reports", []))
+        self._save_artifact("testrail_sync_status", str(tr_sync_status.output if hasattr(tr_sync_status, 'output') else tr_sync_status))
         
         return {"final_report": final_summary}
 
