@@ -44,6 +44,19 @@ class KnowledgeBase:
         
         return self.vector_store.similarity_search(query, k=k)
 
+    def get_context_summary(self, query: str, k: int = 5) -> str:
+        """Retrieves and formats a summary string of relevant past data."""
+        docs = self.search(query, k=k)
+        if not docs:
+            return "No previous relevant test data or mission outcomes found."
+        
+        summary = "Relevant Context from Knowledge Base:\n"
+        for i, doc in enumerate(docs):
+            source = doc.metadata.get("source", doc.metadata.get("mission_id", "Unknown"))
+            content_snippet = doc.page_content[:500].strip()
+            summary += f"\n--- Context Item #{i+1} (Source: {source}) ---\n{content_snippet}\n"
+        return summary
+
     def ingest_directory(self, directory_path: str):
         """Indexes all text files in a directory."""
         docs = []

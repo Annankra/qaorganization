@@ -49,9 +49,13 @@ async def run_mission(input_text: str):
         console.print("[red]FAIL: Quality Gate Not Met - Requires Human Review[/red]")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        test_input = "Implement a new JWT-based authentication system for the user profile service."
-    else:
-        test_input = sys.argv[1]
+    import argparse
+    parser = argparse.ArgumentParser(description="Run a QA Mission")
+    parser.add_argument("--mission", type=str, help="The QA mission goal")
+    parser.add_argument("unnamed_mission", type=str, nargs="?", help="The QA mission goal (positional)")
+    
+    args = parser.parse_args()
+    
+    mission = args.mission or args.unnamed_mission or "Implement a new JWT-based authentication system for the user profile service."
         
-    asyncio.run(run_mission(test_input))
+    asyncio.run(run_mission(mission))

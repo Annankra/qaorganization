@@ -126,9 +126,10 @@ class QAOrchestrator:
         # 1. Generate new scenarios
         scenarios = await self.functional_agent.generate_test_plan(state["input"])
         
-        # 2. Analyze regression needs (simulation with a generic suite summary)
-        mock_suite = "Login tests, User profile tests, JWT Validation tests, Session timeout tests."
-        regression = await self.functional_agent.analyze_regression_needs(state["input"], mock_suite)
+        # 2. Analyze regression needs using real Knowledge Base context
+        from ..core.knowledge_base import kb
+        context = kb.get_context_summary(state["input"])
+        regression = await self.functional_agent.analyze_regression_needs(state["input"], context)
         
         report = f"--- Functional Test Scenarios ---\n{scenarios}\n\n--- Regression Analysis ---\n{regression}"
         self._save_artifact("functional_report", report)
