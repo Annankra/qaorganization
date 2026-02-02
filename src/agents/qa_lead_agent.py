@@ -1,6 +1,8 @@
 from ..core.base_agent import BaseAgent
 from ..core.knowledge_base import kb
 from ..core.policy_engine import PolicyEngine
+from ..skills.jira_ingestion_skill import JiraIngestionSkill
+from ..core.tool_registry import registry
 from pydantic import BaseModel
 from typing import List, Optional
 import json
@@ -22,6 +24,8 @@ class QALeadAgent(BaseAgent):
             role_description="Head of Software Quality, responsible for creating QA organizations and processes. Expert in orchestration and risk assessment."
         )
         self.policy_engine = PolicyEngine()
+        self.jira_skill = JiraIngestionSkill()
+        registry.register_skill(self.jira_skill)
 
     async def analyze_and_plan(self, input_data: str) -> TestMission:
         """Analyzes input (feature spec, PR) and creates a testing mission."""
@@ -36,7 +40,7 @@ class QALeadAgent(BaseAgent):
         
         Input: {input_data}
         
-        Historical Context:
+        Historical Context & Jira Tickets:
         {context}
         
         Respond ONLY with a JSON object in this format:
