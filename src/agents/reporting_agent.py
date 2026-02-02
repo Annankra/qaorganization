@@ -1,10 +1,12 @@
-from .base_agent import BaseAgent
-from typing import List, Dict, Any
+from ..core.base_agent import BaseAgent
+from typing import List, Dict, Any, Optional
+import os
 
 class ReportingAgent(BaseAgent):
     """Specialist agent for aggregating and synthesizing QA mission reports."""
     
-    def __init__(self, name: str = "QA_Reporting_Specialist"):
+    def __init__(self, name: Optional[str] = None):
+        name = name or os.getenv("REPORTER_NAME", "QA_Reporting_Specialist")
         super().__init__(
             name=name,
             role_description="Expert in technical communication and QA metrics summary. Responsible for creating executive reports."

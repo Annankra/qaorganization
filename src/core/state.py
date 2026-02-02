@@ -1,6 +1,6 @@
 from typing import TypedDict, List, Annotated
 import operator
-from .qa_lead_agent import TestMission
+from ..agents.qa_lead_agent import TestMission
 
 class QAOrganizationState(TypedDict):
     """The shared state for the agentic QA organization."""

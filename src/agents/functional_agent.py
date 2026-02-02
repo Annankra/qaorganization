@@ -1,11 +1,15 @@
+from ..core.base_agent import BaseAgent
 from ..skills.scenario_generation_skill import ScenarioGenerationSkill
 from ..skills.regression_analysis_skill import RegressionAnalysisSkill
 from ..core.tool_registry import registry
+from typing import Optional
+import os
 
 class FunctionalAgent(BaseAgent):
     """Specialist agent for functional testing and regression."""
     
-    def __init__(self, name: str = "Functional_Specialist"):
+    def __init__(self, name: Optional[str] = None):
+        name = name or os.getenv("FUNCTIONAL_AGENT_NAME", "Functional_Specialist")
         super().__init__(
             name=name,
             role_description="Expert in functional testing, manual testing strategies, and regression suite management."

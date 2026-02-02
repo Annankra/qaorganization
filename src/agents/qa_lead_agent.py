@@ -1,7 +1,10 @@
+from ..core.base_agent import BaseAgent
 from ..core.knowledge_base import kb
 from ..core.policy_engine import PolicyEngine
 from pydantic import BaseModel
+from typing import List, Optional
 import json
+import os
 
 class TestMission(BaseModel):
     priority: str
@@ -10,9 +13,10 @@ class TestMission(BaseModel):
     risk_score: int
 
 class QALeadAgent(BaseAgent):
-    """The orchestrator agent responsible for strategy and prioritization."""
+    """The orchestrator agent responsible for analyzing requirements and planning missions."""
     
-    def __init__(self, name: str = "QA_Lead_Orchestrator"):
+    def __init__(self, name: Optional[str] = None):
+        name = name or os.getenv("LEAD_ORCHESTRATOR_NAME", "QA_Lead_Orchestrator")
         super().__init__(
             name=name,
             role_description="Head of Software Quality, responsible for creating QA organizations and processes. Expert in orchestration and risk assessment."

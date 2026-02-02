@@ -1,14 +1,18 @@
+from ..core.base_agent import BaseAgent
 from ..skills.user_journey_mapping_skill import UserJourneyMappingSkill
 from ..skills.playwright_automation_skill import PlaywrightAutomationSkill
 from ..core.tool_registry import registry
+from typing import Optional
+import os
 
 class E2EAgent(BaseAgent):
-    """Specialist agent for end-to-end and system-wide testing."""
+    """Specialist agent for end-to-end testing and automation."""
     
-    def __init__(self, name: str = "E2E_Specialist"):
+    def __init__(self, name: Optional[str] = None):
+        name = name or os.getenv("E2E_AGENT_NAME", "E2E_Specialist")
         super().__init__(
             name=name,
-            role_description="Expert in end-to-end testing, user journey validation, and system integration flows."
+            role_description="Expert in user journey mapping and automated E2E testing using Playwright."
         )
         # Register skills
         self.mapping_skill = UserJourneyMappingSkill()

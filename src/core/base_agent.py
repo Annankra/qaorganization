@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
-from langchain.schema import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage
 import logging
 import os
 from .tool_registry import registry, ToolResult

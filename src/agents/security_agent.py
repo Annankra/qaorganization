@@ -1,14 +1,18 @@
+from ..core.base_agent import BaseAgent
 from ..skills.security_scanning_skill import SecurityScanningSkill
 from ..skills.threat_modeling_skill import ThreatModelingSkill
 from ..core.tool_registry import registry
+from typing import Optional
+import os
 
 class SecurityAgent(BaseAgent):
-    """Specialist agent for security testing (SAST, DAST, Pen-testing)."""
+    """Specialist agent for automated security audits."""
     
-    def __init__(self, name: str = "Security_Specialist"):
+    def __init__(self, name: Optional[str] = None):
+        name = name or os.getenv("SECURITY_AGENT_NAME", "Security_Specialist")
         super().__init__(
             name=name,
-            role_description="Expert in software security, identifying vulnerabilities, and verifying security posture."
+            role_description="Expert in application security, penetration testing, and vulnerability assessment."
         )
         # Register skills
         self.scan_skill = SecurityScanningSkill()

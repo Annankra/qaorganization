@@ -1,5 +1,7 @@
 from .skill import Skill, SkillResult
 from .shell_skill import ShellSkill
+import logging
+from typing import Dict, Optional, List
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ToolRegistry")

@@ -1,5 +1,6 @@
-from .skill import Skill, SkillResult
+from ..core.skill import Skill, SkillResult
 from ..core.knowledge_base import kb
+from langchain_core.documents import Document
 import logging
 
 logger = logging.getLogger("KnowledgeIngestionSkill")
@@ -15,7 +16,8 @@ class KnowledgeIngestionSkill(Skill):
 
     async def run(self, mission_id: str, content: str) -> SkillResult:
         try:
-            kb.add_documents([content], metadata={"mission_id": mission_id, "type": "mission_outcome"})
+            doc = Document(page_content=content, metadata={"mission_id": mission_id, "type": "mission_outcome"})
+            kb.add_documents([doc])
             logger.info(f"Ingested mission outcome for {mission_id}")
             return SkillResult(
                 success=True,

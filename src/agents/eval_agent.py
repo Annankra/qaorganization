@@ -1,7 +1,8 @@
-from .base_agent import BaseAgent
-from typing import List, Dict, Any
+from ..core.base_agent import BaseAgent
+from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 import json
+import os
 
 class EvaluationResult(BaseModel):
     score: int
@@ -11,7 +12,8 @@ class EvaluationResult(BaseModel):
 class EvalAgent(BaseAgent):
     """Specialist agent for evaluating the success and quality of QA missions."""
     
-    def __init__(self, name: str = "QA_Evaluation_Specialist"):
+    def __init__(self, name: Optional[str] = None):
+        name = name or os.getenv("EVALUATOR_NAME", "QA_Evaluation_Specialist")
         super().__init__(
             name=name,
             role_description="Expert in QA metrics and organizational effectiveness. Responsible for scoring mission outcomes."

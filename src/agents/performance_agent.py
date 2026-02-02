@@ -1,11 +1,15 @@
+from ..core.base_agent import BaseAgent
 from ..skills.load_testing_skill import LoadTestingSkill
 from ..skills.multi_metric_analysis_skill import MultiMetricAnalysisSkill
 from ..core.tool_registry import registry
+from typing import Optional
+import os
 
 class PerformanceAgent(BaseAgent):
     """Specialist agent for performance, load, and scalability testing."""
     
-    def __init__(self, name: str = "Performance_Specialist"):
+    def __init__(self, name: Optional[str] = None):
+        name = name or os.getenv("PERFORMANCE_AGENT_NAME", "Performance_Specialist")
         super().__init__(
             name=name,
             role_description="Expert in performance engineering, identifying bottlenecks, and ensuring system scalability."

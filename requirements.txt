@@ -1,4 +1,6 @@
 langchain
+langchain-core
+langchain-community
 langgraph
 langchain-openai
 pydantic
@@ -8,3 +10,4 @@ python-dotenv
 pytest
 playwright
 rich
+faiss-cpu

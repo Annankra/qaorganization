@@ -2,13 +2,15 @@ import asyncio
 import sys
 import os
 from dotenv import load_dotenv
+
+# Load environment variables (OPENAI_API_KEY) before any project imports
+# This ensures singletons like KnowledgeBase can access environment variables during import.
+load_dotenv()
+
 from src.core.orchestrator import QAOrchestrator
 from src.core.ci_bridge import CIBridge
 from rich.console import Console
 from rich.markdown import Markdown
-
-# Load environment variables (OPENAI_API_KEY)
-load_dotenv()
 
 console = Console()
 
