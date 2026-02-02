@@ -3,6 +3,7 @@ from ..agents.qa_lead_agent import QALeadAgent
 from ..agents.unit_static_agent import UnitStaticAgent
 from ..agents.review_agent import ReviewAgent
 from ..agents.functional_agent import FunctionalAgent
+from ..agents.e2e_agent import E2EAgent
 
 class QAOrchestrator:
     """Sets up and manages the LangGraph for the QA organization."""
@@ -11,6 +12,7 @@ class QAOrchestrator:
         self.lead_agent = QALeadAgent()
         self.unit_static_agent = UnitStaticAgent()
         self.functional_agent = FunctionalAgent()
+        self.e2e_agent = E2EAgent()
         self.review_agent = ReviewAgent()
         self.workflow = StateGraph(QAOrganizationState)
         self._build_graph()
@@ -22,6 +24,7 @@ class QAOrchestrator:
         self.workflow.add_node("lead_planner", self._lead_planner_node)
         self.workflow.add_node("unit_static_node", self._unit_static_node)
         self.workflow.add_node("functional_node", self._functional_node)
+        self.workflow.add_node("e2e_node", self._e2e_node)
         self.workflow.add_node("reviewer", self._reviewer_node)
         self.workflow.add_node("finalizer", self._finalizer_node)
         
@@ -35,12 +38,14 @@ class QAOrchestrator:
             {
                 "unit_static": "unit_static_node",
                 "functional": "functional_node",
+                "e2e": "e2e_node",
                 "end": "finalizer"
             }
         )
         
         self.workflow.add_edge("unit_static_node", "reviewer")
         self.workflow.add_edge("functional_node", "reviewer")
+        self.workflow.add_edge("e2e_node", "reviewer")
         self.workflow.add_edge("reviewer", "finalizer")
         self.workflow.add_edge("finalizer", END)
 
@@ -55,6 +60,8 @@ class QAOrchestrator:
             return "unit_static"
         if "Functional" in mission.target_agents:
             return "functional"
+        if "E2E" in mission.target_agents:
+            return "e2e"
         
         return "end"
 
@@ -76,6 +83,12 @@ class QAOrchestrator:
         regression = await self.functional_agent.analyze_regression_needs(state["input"], mock_suite)
         
         report = f"--- Functional Test Scenarios ---\n{scenarios}\n\n--- Regression Analysis ---\n{regression}"
+        return {"reports": [report]}
+
+    async def _e2e_node(self, state: QAOrganizationState) -> Dict[str, Any]:
+        """Node for the E2EAgent."""
+        journeys = await self.e2e_agent.define_journeys(state["input"])
+        report = f"--- Critical User Journeys ---\n{journeys}"
         return {"reports": [report]}
 
     async def _reviewer_node(self, state: QAOrganizationState) -> Dict[str, Any]:
