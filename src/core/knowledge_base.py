@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
@@ -10,8 +10,8 @@ logger = logging.getLogger("KnowledgeBase")
 class KnowledgeBase:
     """RAG implementation for grounding agents with requirements and history."""
     
-    def __init__(self, index_path: str = "data/faiss_index"):
-        self.index_path = index_path
+    def __init__(self, index_path: Optional[str] = None):
+        self.index_path = index_path or os.getenv("KB_DIR", "data/faiss_index")
         self.embeddings = OpenAIEmbeddings()
         self.vector_store = None
         
