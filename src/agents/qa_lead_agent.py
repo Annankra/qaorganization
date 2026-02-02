@@ -1,6 +1,5 @@
-from typing import List, Dict, Any
-from ..core.base_agent import BaseAgent
 from ..core.knowledge_base import kb
+from ..core.policy_engine import PolicyEngine
 from pydantic import BaseModel
 import json
 
@@ -18,6 +17,7 @@ class QALeadAgent(BaseAgent):
             name=name,
             role_description="Head of Software Quality, responsible for creating QA organizations and processes. Expert in orchestration and risk assessment."
         )
+        self.policy_engine = PolicyEngine()
 
     async def analyze_and_plan(self, input_data: str) -> TestMission:
         """Analyzes input (feature spec, PR) and creates a testing mission."""
