@@ -1,52 +1,54 @@
 import asyncio
+import sys
 import os
 from dotenv import load_dotenv
-from src.agents.qa_lead_agent import QALeadAgent
-from src.agents.unit_static_agent import UnitStaticAgent
-from src.core.knowledge_base import kb
+from src.core.orchestrator import QAOrchestrator
+from src.core.ci_bridge import CIBridge
 from rich.console import Console
-from rich.panel import Panel
+from rich.markdown import Markdown
 
+# Load environment variables (OPENAI_API_KEY)
 load_dotenv()
+
 console = Console()
 
-async def demo():
-    console.print(Panel("[bold green]Agentic QA Organization Demo[/bold green]"))
+async def run_mission(input_text: str):
+    """Triggers a full QA mission via the orchestrator."""
+    console.print(f"[bold blue]Starting QA Mission for:[/bold blue] {input_text}\n")
     
-    # 1. Initialize Agents
-    lead = QALeadAgent()
-    unit_specialist = UnitStaticAgent()
+    orchestrator = QAOrchestrator()
+    app = orchestrator.compile()
     
-    # 2. Setup Knowledge Base (Example ingestion)
-    # We'll ingest the conversation as a requirement
-    if os.path.exists("conversation.txt"):
-        kb.ingest_directory(".")
+    # Initialize state
+    initial_state = {
+        "input": input_text,
+        "reports": [],
+        "current_task": "start",
+        "final_report": ""
+    }
     
-    # 3. Simulate a new feature request
-    feature_input = "Implement a new authentication module with JWT. Ensure it's secure and follows our standards."
+    # Run the graph
+    console.print("[yellow]Agents are collaborating...[/yellow]")
+    final_output = await app.ainvoke(initial_state)
     
-    console.print(f"\n[bold blue]Step 1: Lead Agent analyzing feature:[/bold blue] {feature_input}")
-    mission = await lead.analyze_and_plan(feature_input)
+    # Display final report
+    console.print("\n[bold green]Mission Complete![/bold green]\n")
+    report_md = Markdown(final_output["final_report"])
+    console.print(report_md)
     
-    console.print(f"[bold yellow]Mission Created:[/bold yellow]")
-    console.print(f"  - Priority: {mission.priority}")
-    console.print(f"  - Risk Score: {mission.risk_score}")
-    console.print(f"  - Target Agents: {mission.target_agents}")
-    console.print(f"  - Objectives: {mission.objectives}")
-    
-    # 4. Simulate Handoff to Specialist
-    if "UnitStatic" in mission.target_agents or "Security" in mission.target_agents:
-        console.print(f"\n[bold blue]Step 2: Assigning tasks to specialist...[/bold blue]")
-        await lead.assign_tasks(mission)
-        
-        console.print(f"\n[bold purple]Step 3: Unit Specialist performing tasks...[/bold purple]")
-        lint_result = await unit_specialist.run_lint("src/agents/qa_lead_agent.py")
-        console.print(f"  - {lint_result}")
-        
-        coverage_report = await unit_specialist.analyze_coverage()
-        console.print(f"  - {coverage_report}")
-    
-    console.print("\n[bold green]Demo Complete![/bold green]")
+    # Check CI Gate (Simulated)
+    # Extract score from report (mock logic for demo)
+    # In reality, the EvalAgent node would return a structured object in the state
+    console.print("\n[bold cyan]CI/CD Gate Status:[/bold cyan]")
+    if "Score: 8" in final_output["final_report"] or "Score: 9" in final_output["final_report"] or "Score: 10" in final_output["final_report"]:
+        console.print("[green]PASS: Quality Gate Met[/green]")
+    else:
+        console.print("[red]FAIL: Quality Gate Not Met - Requires Human Review[/red]")
 
 if __name__ == "__main__":
-    asyncio.run(demo())
+    if len(sys.argv) < 2:
+        test_input = "Implement a new JWT-based authentication system for the user profile service."
+    else:
+        test_input = sys.argv[1]
+        
+    asyncio.run(run_mission(test_input))
