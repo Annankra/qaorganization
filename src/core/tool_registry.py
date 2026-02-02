@@ -1,77 +1,45 @@
-import subprocess
-import logging
-from typing import Dict, Any, Callable, Optional, List
-from pydantic import BaseModel
+from .skill import Skill, SkillResult
+from .shell_skill import ShellSkill
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ToolRegistry")
 
-class ToolResult(BaseModel):
-    success: bool
-    output: str
-    error: Optional[str] = None
-    metadata: Dict[str, Any] = {}
+# Keeping ToolResult for backward compatibility or refactoring it to SkillResult
+ToolResult = SkillResult 
 
 class ToolRegistry:
-    """Central registry for tools that agents can execute."""
+    """Central registry for tools and skills that agents can execute."""
     
     def __init__(self):
-        self._tools: Dict[str, Callable] = {}
-        self._tool_descriptions: Dict[str, str] = {}
-        self._setup_default_tools()
+        self._skills: Dict[str, Skill] = {}
+        self._setup_default_skills()
 
-    def register_tool(self, name: str, description: str, func: Callable):
-        self._tools[name] = func
-        self._tool_descriptions[name] = description
-        logger.info(f"Registered tool: {name}")
+    def register_skill(self, skill: Skill):
+        self._skills[skill.name] = skill
+        logger.info(f"Registered skill: {skill.name}")
 
-    def get_tool(self, name: str) -> Optional[Callable]:
-        return self._tools.get(name)
+    def get_skill(self, name: str) -> Optional[Skill]:
+        return self._skills.get(name)
 
-    def list_tools(self) -> List[Dict[str, str]]:
-        return [{"name": name, "description": desc} for name, desc in self._tool_descriptions.items()]
+    def list_skills(self) -> List[Dict[str, str]]:
+        return [{"name": s.name, "description": s.description} for s in self._skills.values()]
 
-    def execute(self, tool_name: str, **kwargs) -> ToolResult:
-        """Executes a tool by name with provided arguments."""
-        tool = self.get_tool(tool_name)
-        if not tool:
-            return ToolResult(success=False, output="", error=f"Tool '{tool_name}' not found.")
+    async def execute(self, skill_name: str, **kwargs) -> SkillResult:
+        """Executes a skill by name with provided arguments."""
+        skill = self.get_skill(skill_name)
+        if not skill:
+            return SkillResult(success=False, output="", error=f"Skill '{skill_name}' not found.")
         
         try:
-            logger.info(f"Executing tool: {tool_name} with args: {kwargs}")
-            result = tool(**kwargs)
-            if isinstance(result, ToolResult):
-                return result
-            return ToolResult(success=True, output=str(result))
+            logger.info(f"Executing skill: {skill_name} with args: {kwargs}")
+            return await skill.run(**kwargs)
         except Exception as e:
-            logger.error(f"Error executing tool {tool_name}: {e}")
-            return ToolResult(success=False, output="", error=str(e))
+            logger.error(f"Error executing skill {skill_name}: {e}")
+            return SkillResult(success=False, output="", error=str(e))
 
-    def _setup_default_tools(self):
-        """Registers some basic system tools."""
-        self.register_tool(
-            "run_shell",
-            "Runs a shell command and returns output. Args: command (str)",
-            self._run_shell
-        )
-
-    def _run_shell(self, command: str) -> ToolResult:
-        try:
-            result = subprocess.run(
-                command, 
-                shell=True, 
-                capture_output=True, 
-                text=True, 
-                check=False
-            )
-            return ToolResult(
-                success=result.returncode == 0,
-                output=result.stdout,
-                error=result.stderr if result.returncode != 0 else None,
-                metadata={"returncode": result.returncode}
-            )
-        except Exception as e:
-            return ToolResult(success=False, output="", error=str(e))
+    def _setup_default_skills(self):
+        """Registers some basic system skills."""
+        self.register_skill(ShellSkill())
 
 # Singleton instance
 registry = ToolRegistry()

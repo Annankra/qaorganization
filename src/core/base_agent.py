@@ -54,8 +54,8 @@ class BaseAgent:
         
         return content
 
-    def execute_tool(self, tool_name: str, **kwargs) -> ToolResult:
-        return self.tools.execute(tool_name, **kwargs)
+    async def execute_tool(self, tool_name: str, **kwargs) -> ToolResult:
+        return await self.tools.execute(tool_name, **kwargs)
 
     def __repr__(self):
         return f"<{self.__class__.__name__} name='{self.name}'>"

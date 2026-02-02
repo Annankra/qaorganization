@@ -15,7 +15,7 @@ class UnitStaticAgent(BaseAgent):
         """Skill: Runs linting on a specific file."""
         self.add_to_memory("assistant", f"Starting linting for {file_path}")
         # Simulation of tool usage
-        result = self.execute_tool("run_shell", command=f"ls {file_path}") # Placeholder
+        result = await self.execute_tool("run_shell", command=f"ls {file_path}") # Placeholder
         if result.success:
             return f"Linting passed for {file_path}. (Simulated)"
         else:
