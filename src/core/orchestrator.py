@@ -132,6 +132,16 @@ class QAOrchestrator:
         
         report = f"--- Functional Test Scenarios ---\n{scenarios}\n\n--- Regression Analysis ---\n{regression}"
         self._save_artifact("functional_report", report)
+
+        # Automated Test Case Upload to TestRail
+        structured_cases = await self.functional_agent.parse_scenarios_to_structured_data(scenarios)
+        if structured_cases:
+            upload_result = await self.functional_agent.upload_skill.run(
+                section_id=1, # Default section
+                test_cases=structured_cases
+            )
+            self._save_artifact("testrail_case_upload_status", str(upload_result.output))
+        
         return {"reports": [report], "visited_agents": ["Functional"]}
 
     async def _e2e_node(self, state: QAOrganizationState) -> Dict[str, Any]:

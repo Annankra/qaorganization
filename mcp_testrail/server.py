@@ -70,6 +70,27 @@ def add_test_result(run_id: int, case_id: int, status_id: int, comment: str):
         return f"Result added for Case {case_id} in Run {run_id}."
     return f"Failed to add result: {response.status_code} - {response.text}"
 
+@mcp.tool()
+def add_test_case(section_id: int, title: str, custom_preconds: str = "", custom_steps: str = "", expected: str = ""):
+    """
+    Adds a new test case to a specific section in TestRail.
+    """
+    if not TR_URL: return "Error: TESTRAIL_URL not configured."
+    url = f"{TR_URL}/index.php?/api/v2/add_case/{section_id}"
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "title": title,
+        "custom_preconds": custom_preconds,
+        "custom_steps": custom_steps,
+        "custom_expected": expected
+    }
+    
+    response = requests.post(url, headers=headers, json=data, auth=_get_auth())
+    if response.status_code == 200:
+        case_data = response.json()
+        return f"Successfully created Test Case: {case_data['title']} (ID: {case_data['id']})"
+    return f"Failed to create case: {response.status_code} - {response.text}"
+
 @mcp.resource("testrail://cases/{project_id}/{suite_id}")
 def testrail_cases_resource(project_id: int, suite_id: int) -> str:
     """Returns the raw JSON of all cases for a project/suite."""
