@@ -99,6 +99,29 @@ Run a specific mission directly from the terminal:
 
 ---
 
+## 🧠 Knowledge Base Management
+
+The system maintains a **FAISS** vector database to remember past missions and Jira context. Use the included utility to inspect or clear this memory:
+
+- **Check Stats**: View document counts by type.
+  ```bash
+  ./venv/bin/python3 scripts/inspect_kb.py stats
+  ```
+- **List Recent**: See the last 5 ingested items.
+  ```bash
+  ./venv/bin/python3 scripts/inspect_kb.py list --limit 5
+  ```
+- **Semantic Search**: Find missions related to a topic.
+  ```bash
+  ./venv/bin/python3 scripts/inspect_kb.py search "login security"
+  ```
+- **Reset Memory**: Clear all content from the database.
+  ```bash
+  ./venv/bin/python3 scripts/inspect_kb.py clear
+  ```
+
+---
+
 ## 📈 Dashboard Preview
 
 The dashboard provides real-time visibility into the "Brain" of the QA organization:
