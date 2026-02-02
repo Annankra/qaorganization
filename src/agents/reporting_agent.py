@@ -62,7 +62,7 @@ class ReportingAgent(BaseAgent):
         """
         return await self.chat(prompt)
 
-    def _truncate_report(self, content: str, max_chars: int = 5000) -> str:
+    def _truncate_report(self, content: str, max_chars: int = 3000) -> str:
         """Truncates a report string if it exceeds the character limit."""
         if len(content) > max_chars:
             return content[:max_chars] + "\n... [Report Truncated due to size] ..."

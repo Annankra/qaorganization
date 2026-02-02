@@ -43,7 +43,13 @@ class MemoryManager:
             logger.error(f"Error saving memory for {self.agent_name}: {e}")
 
     def add_entry(self, role: str, content: str, metadata: Dict[str, Any] = None):
-        entry = MemoryEntry(role=role, content=content, metadata=metadata or {})
+        # Aggressive truncation to prevent token bloom in agent history
+        max_chars = 2000
+        safe_content = content
+        if len(content) > max_chars:
+            safe_content = content[:max_chars] + "\n... [Memory Entry Truncated] ..."
+            
+        entry = MemoryEntry(role=role, content=safe_content, metadata=metadata or {})
         self.memory.append(entry)
         self.save_memory()
 

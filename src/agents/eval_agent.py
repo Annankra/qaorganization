@@ -21,7 +21,9 @@ class EvalAgent(BaseAgent):
 
     async def evaluate_mission(self, state: Dict[str, Any]) -> EvaluationResult:
         """Scores the mission based on the state (input, mission, reports)."""
-        reports_content = "\n\n".join(state.get("reports", []))
+        reports = state.get("reports", [])
+        truncated_reports = [r[:3000] + "\n...[truncated]..." if len(r) > 3000 else r for r in reports]
+        reports_content = "\n\n".join(truncated_reports)
         input_data = state.get("input", "")
         mission = state.get("mission")
         

@@ -16,10 +16,14 @@ class UnitStaticAgent(BaseAgent):
     async def run_lint(self, target: str) -> str:
         """Skill: Runs a simulated linting scan."""
         result = await self.execute_tool("run_shell", command=f"lint {target}")
+        output = result.output
+        if len(output) > 3000:
+            output = output[:3000] + "\n... [Lint Output Truncated] ..."
+            
         if result.success:
-            return result.output
+            return output
         else:
-            return f"Linting failed: {result.error}"
+            return f"Linting failed: {result.error}\nPartial Output: {output}"
 
     async def analyze_coverage(self) -> str:
         """Skill: Analyzes test coverage."""

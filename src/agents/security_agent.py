@@ -23,18 +23,26 @@ class SecurityAgent(BaseAgent):
     async def perform_security_audit(self, target: str) -> str:
         """Skill: Performs a SAST/DAST audit."""
         result = await self.execute_tool("security_scan", target=target)
+        output = result.output
+        if len(output) > 3000:
+            output = output[:3000] + "\n... [Security Result Truncated] ..."
+            
         if result.success:
-            return result.output
+            return output
         else:
-            return f"Security audit failed: {result.error}"
+            return f"Security audit failed: {result.error}\nPartial Output: {output}"
 
     async def generate_threat_model(self, requirements: str) -> str:
         """Skill: Generates a threat model."""
         result = await self.execute_tool("threat_model", requirements=requirements)
+        output = result.output
+        if len(output) > 3000:
+            output = output[:3000] + "\n... [Threat Model Truncated] ..."
+            
         if result.success:
-            return result.output
+            return output
         else:
-            return f"Threat modeling failed: {result.error}"
+            return f"Threat modeling failed: {result.error}\nPartial Output: {output}"
 
     def get_system_prompt(self) -> str:
         base_prompt = super().get_system_prompt()

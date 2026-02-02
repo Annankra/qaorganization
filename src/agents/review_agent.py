@@ -15,7 +15,7 @@ class ReviewAgent(BaseAgent):
     async def audit_reports(self, reports: List[str]) -> str:
         """Critiques the gathered reports."""
         # Truncate reports to stay under token limits
-        truncated_reports = [r[:5000] + "\n...[truncated]..." if len(r) > 5000 else r for r in reports]
+        truncated_reports = [r[:3000] + "\n...[truncated]..." if len(r) > 3000 else r for r in reports]
         all_reports = "\n\n".join(truncated_reports)
         
         prompt = f"""

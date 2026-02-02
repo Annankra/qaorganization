@@ -36,7 +36,7 @@ class PerformanceAgent(BaseAgent):
         result = await self.execute_tool("execute_test", code=code, test_type="k6")
         
         # Truncate output to avoid massive token usage in downstream agents
-        max_log_size = 5000
+        max_log_size = 3000
         output = result.output
         if len(output) > max_log_size:
             output = output[:max_log_size] + "\n... [Output Truncated for Brevity] ..."
