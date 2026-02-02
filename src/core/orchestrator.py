@@ -6,6 +6,7 @@ from ..agents.functional_agent import FunctionalAgent
 from ..agents.e2e_agent import E2EAgent
 from ..agents.security_agent import SecurityAgent
 from ..agents.performance_agent import PerformanceAgent
+from ..agents.eval_agent import EvalAgent
 
 class QAOrchestrator:
     """Sets up and manages the LangGraph for the QA organization."""
@@ -17,6 +18,7 @@ class QAOrchestrator:
         self.e2e_agent = E2EAgent()
         self.security_agent = SecurityAgent()
         self.performance_agent = PerformanceAgent()
+        self.eval_agent = EvalAgent()
         self.review_agent = ReviewAgent()
         self.workflow = StateGraph(QAOrganizationState)
         self._build_graph()
@@ -31,6 +33,7 @@ class QAOrchestrator:
         self.workflow.add_node("e2e_node", self._e2e_node)
         self.workflow.add_node("security_node", self._security_node)
         self.workflow.add_node("performance_node", self._performance_node)
+        self.workflow.add_node("evaluator", self._evaluator_node)
         self.workflow.add_node("reviewer", self._reviewer_node)
         self.workflow.add_node("finalizer", self._finalizer_node)
         
@@ -56,7 +59,8 @@ class QAOrchestrator:
         self.workflow.add_edge("e2e_node", "reviewer")
         self.workflow.add_edge("security_node", "reviewer")
         self.workflow.add_edge("performance_node", "reviewer")
-        self.workflow.add_edge("reviewer", "finalizer")
+        self.workflow.add_edge("reviewer", "evaluator")
+        self.workflow.add_edge("evaluator", "finalizer")
         self.workflow.add_edge("finalizer", END)
 
     def _route_tasks(self, state: QAOrganizationState) -> str:
@@ -131,6 +135,12 @@ class QAOrchestrator:
         analysis = await self.performance_agent.analyze_performance_results(mock_metrics)
         
         report = f"--- Performance Load Test Plan ---\n{plan}\n\n--- Performance Bottleneck Analysis ---\n{analysis}"
+        return {"reports": [report]}
+
+    async def _evaluator_node(self, state: QAOrganizationState) -> Dict[str, Any]:
+        """Node for the EvalAgent to score the mission."""
+        eval_result = await self.eval_agent.evaluate_mission(state)
+        report = f"--- Mission Evaluation (Score: {eval_result.score}/10) ---\nRationale: {eval_result.rationale}\nFeedback: {', '.join(eval_result.feedback)}"
         return {"reports": [report]}
 
     async def _reviewer_node(self, state: QAOrganizationState) -> Dict[str, Any]:
