@@ -68,8 +68,14 @@ class QAOrchestrator:
 
     async def _functional_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the FunctionalAgent."""
+        # 1. Generate new scenarios
         scenarios = await self.functional_agent.generate_test_plan(state["input"])
-        report = f"--- Functional Test Scenarios ---\n{scenarios}"
+        
+        # 2. Analyze regression needs (simulation with a generic suite summary)
+        mock_suite = "Login tests, User profile tests, JWT Validation tests, Session timeout tests."
+        regression = await self.functional_agent.analyze_regression_needs(state["input"], mock_suite)
+        
+        report = f"--- Functional Test Scenarios ---\n{scenarios}\n\n--- Regression Analysis ---\n{regression}"
         return {"reports": [report]}
 
     async def _reviewer_node(self, state: QAOrganizationState) -> Dict[str, Any]:
