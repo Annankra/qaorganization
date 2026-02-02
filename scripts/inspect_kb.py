@@ -47,6 +47,20 @@ def show_stats():
         print(f" - {d_type}: {d_count}")
     print("-" * 33)
 
+def clear_kb():
+    print("\n--- Clearing Knowledge Base ---\n")
+    index_path = kb.index_path
+    files_to_remove = ["index.faiss", "index.pkl"]
+    for f in files_to_remove:
+        path = os.path.join(index_path, f)
+        if os.path.exists(path):
+            os.remove(path)
+            print(f"Removed: {path}")
+    
+    # Reset singleton state
+    kb.vector_store = None
+    print("\nKnowledge Base has been reset.")
+
 def search_kb(query, k=3):
     print(f"\n--- Searching KB for: '{query}' ---\n")
     results = kb.search(query, k=k)
@@ -72,6 +86,9 @@ def main():
     # Stats command
     subparsers.add_parser("stats", help="Show KB statistics")
 
+    # Clear command
+    subparsers.add_parser("clear", help="Clear all KB content")
+
     # Search command
     search_parser = subparsers.add_parser("search", help="Search the KB")
     search_parser.add_argument("query", type=str, help="Search query")
@@ -83,6 +100,8 @@ def main():
         list_docs(args.limit)
     elif args.command == "stats":
         show_stats()
+    elif args.command == "clear":
+        clear_kb()
     elif args.command == "search":
         search_kb(args.query, args.k)
     else:

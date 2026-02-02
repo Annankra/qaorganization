@@ -18,9 +18,13 @@ class KnowledgeBase:
         self.embeddings = OpenAIEmbeddings()
         self.vector_store = None
         
-        if os.path.exists(self.index_path):
+        # Only load if both the folder and index files exist
+        has_index = os.path.exists(os.path.join(self.index_path, "index.faiss"))
+        if has_index:
             self.vector_store = FAISS.load_local(self.index_path, self.embeddings, allow_dangerous_deserialization=True)
             logger.info(f"Loaded existing index from {self.index_path}")
+        else:
+            logger.info(f"No existing index found at {self.index_path}. Starting fresh.")
 
     def add_documents(self, documents: List[Document]):
         """Adds documents to the vector store."""
