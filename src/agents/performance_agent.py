@@ -34,10 +34,17 @@ class PerformanceAgent(BaseAgent):
     async def execute_load_test(self, code: str) -> str:
         """Skill: Executes k6 load test script."""
         result = await self.execute_tool("execute_test", code=code, test_type="k6")
+        
+        # Truncate output to avoid massive token usage in downstream agents
+        max_log_size = 5000
+        output = result.output
+        if len(output) > max_log_size:
+            output = output[:max_log_size] + "\n... [Output Truncated for Brevity] ..."
+
         if result.success:
-            return f"Load Test SUCCESS:\n{result.output}"
+            return f"Load Test SUCCESS:\n{output}"
         else:
-            return f"Load Test FAILED:\n{result.output}\nError: {result.error}"
+            return f"Load Test FAILED:\n{output}\nError: {result.error}"
 
     async def analyze_performance_results(self, metrics: str) -> str:
         """Skill: Analyzes performance metrics."""

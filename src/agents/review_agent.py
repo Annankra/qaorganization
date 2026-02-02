@@ -14,7 +14,10 @@ class ReviewAgent(BaseAgent):
 
     async def audit_reports(self, reports: List[str]) -> str:
         """Critiques the gathered reports."""
-        all_reports = "\n\n".join(reports)
+        # Truncate reports to stay under token limits
+        truncated_reports = [r[:5000] + "\n...[truncated]..." if len(r) > 5000 else r for r in reports]
+        all_reports = "\n\n".join(truncated_reports)
+        
         prompt = f"""
         Audit the following QA specialist reports. Identify any missing coverage, inaccuracies, or areas for improvement.
         

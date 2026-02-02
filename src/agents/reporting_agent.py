@@ -39,7 +39,10 @@ class ReportingAgent(BaseAgent):
 
     async def generate_final_summary(self, reports: List[str], input_data: str) -> str:
         """Synthesizes multiple specialist reports into a single executive summary."""
-        all_reports = "\n\n".join(reports)
+        # Truncate individual reports to stay within a reasonable token budget
+        truncated_reports = [self._truncate_report(r) for r in reports]
+        all_reports = "\n\n".join(truncated_reports)
+        
         prompt = f"""
         Synthesize the following QA specialist reports and evaluations into a single executive summary.
         
@@ -58,6 +61,12 @@ class ReportingAgent(BaseAgent):
         Format it in clean Markdown.
         """
         return await self.chat(prompt)
+
+    def _truncate_report(self, content: str, max_chars: int = 5000) -> str:
+        """Truncates a report string if it exceeds the character limit."""
+        if len(content) > max_chars:
+            return content[:max_chars] + "\n... [Report Truncated due to size] ..."
+        return content
 
     def get_system_prompt(self) -> str:
         base_prompt = super().get_system_prompt()
