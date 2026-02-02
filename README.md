@@ -12,6 +12,7 @@ The Agentic QA Organization transforms high-level testing requirements into exec
 - **Autonomous Planning**: LangGraph-driven workflows that adapt based on agent findings.
 - **Real Tool Execution**: Generates and runs real **Playwright** (E2E) and **k6** (Load Testing) scripts.
 - **Advanced RAG**: Grounded in project context via **Jira Integration** and local knowledge bases.
+- **TestRail Synchronization**: Automated result reporting via **Model Context Protocol (MCP)**.
 - **Real-time Visualization**: A sleek web dashboard to monitor agent transitions and live log streams.
 
 ---
@@ -27,6 +28,7 @@ The system follows a decentralized multi-agent architecture:
   - `Functional/Unit Specialists`: Static analysis and logic verification.
 - **Execution Engine**: A dedicated layer for safely running generated code in subprocesses.
 - **Knowledge Base**: FAISS-powered vector store for retrieving Jira issues and past mission results.
+- **MCP Server**: A sidecar service for integrating external tools like TestRail with standard protocols.
 
 ---
 
@@ -62,6 +64,11 @@ OPENAI_API_KEY=your_key_here
 JIRA_URL=https://your-domain.atlassian.net
 JIRA_USER_EMAIL=your-email@example.com
 JIRA_API_TOKEN=your-token
+
+# TestRail Configuration (MCP)
+TESTRAIL_URL=https://your-domain.testrail.io
+TESTRAIL_USER=your-email@example.com
+TESTRAIL_API_KEY=your-api-key
 ```
 
 ---

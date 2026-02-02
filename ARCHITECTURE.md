@@ -26,8 +26,11 @@ graph TD
         SKILLS --> EXEC[Execution Engine]
         SPEC --> KB[Knowledge Base - FAISS]
         KB <--> JIRA[Jira Connector]
+        SKILLS <--> MCP[MCP Client]
     end
     
+    MCP <--> MCPS[TestRail MCP Server]
+    MCPS <--> TR[TestRail API]
     EXEC --> PLAY[Playwright / k6 Runners]
 ```
 
@@ -45,6 +48,11 @@ All agents inherit from a [BaseAgent](file:///Users/danielannankra/dev/AI/qaorga
 Agents do not just "think"—they "act."
 - **ExecutionEngine**: Safely runs generated Python (Playwright) or k6 (JavaScript) scripts in isolated subprocesses.
 - **RAG Implementation**: Grounding data is fetched from local text/markdown files and Jira issues, indexed using OpenAI Embeddings and FAISS.
+
+### 4. TestRail Integration (MCP)
+The system integrates with TestRail via the **Model Context Protocol (MCP)**.
+- **Sidecar Server**: A standalone service ([mcp_testrail/server.py](file:///Users/danielannankra/dev/AI/qaorganization/mcp_testrail/server.py)) that wraps the TestRail API.
+- **Automated Sync**: The Reporting Agent utilizes the MCP client to create test runs and push results automatically at the end of a mission.
 
 ---
 
@@ -72,6 +80,9 @@ sequenceDiagram
         S-->>O: Submit Specialist Report
     end
     
+    O->>S: Finalize & Sync to TestRail
+    S->>MCP: Push Results
+    MCP-->>S: Sync Confirmation
     O->>U: Stream Final Consolidated Report
 ```
 
@@ -88,6 +99,7 @@ sequenceDiagram
 | **RAG** | FAISS, OpenAI Embeddings | Reliable, local vector storage. |
 | **E2E Testing** | Playwright | Robust, modern web automation. |
 | **Load Testing** | k6 | Developer-friendly, scriptable performance tests. |
+| **Integration Protocol** | MCP | Standardized interface for bridging agents with TestRail tools. |
 
 ---
 
