@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage
 import logging
+import os
 from .tool_registry import registry, ToolResult
 from .memory_manager import MemoryManager, MemoryEntry
 from .feedback_loop import FeedbackLoop
@@ -20,14 +21,20 @@ class BaseAgent:
         self, 
         name: str, 
         role_description: str, 
-        model_name: str = "gpt-4o",
-        temperature: float = 0.7,
-        memory_dir: str = "data/memory"
+        model_name: Optional[str] = None,
+        temperature: Optional[float] = None,
+        memory_dir: Optional[str] = None
     ):
         self.name = name
         self.role_description = role_description
-        self.llm = ChatOpenAI(model=model_name, temperature=temperature)
-        self.memory_manager = MemoryManager(agent_name=name, storage_dir=memory_dir)
+        
+        # Load from env or use defaults
+        model = model_name or os.getenv("LLM_MODEL", "gpt-4o")
+        temp = temperature if temperature is not None else float(os.getenv("TEMPERATURE", "0.7"))
+        mem_dir = memory_dir or os.getenv("MEMORY_DIR", "data/memory")
+        
+        self.llm = ChatOpenAI(model=model, temperature=temp)
+        self.memory_manager = MemoryManager(agent_name=name, storage_dir=mem_dir)
         self.feedback_loop = FeedbackLoop(self.memory_manager)
         self.tools = registry
 
