@@ -7,6 +7,7 @@ from ..agents.e2e_agent import E2EAgent
 from ..agents.security_agent import SecurityAgent
 from ..agents.performance_agent import PerformanceAgent
 from ..agents.eval_agent import EvalAgent
+from ..skills.knowledge_ingestion_skill import KnowledgeIngestionSkill
 
 class QAOrchestrator:
     """Sets up and manages the LangGraph for the QA organization."""
@@ -19,6 +20,7 @@ class QAOrchestrator:
         self.security_agent = SecurityAgent()
         self.performance_agent = PerformanceAgent()
         self.eval_agent = EvalAgent()
+        self.ingestion_skill = KnowledgeIngestionSkill()
         self.review_agent = ReviewAgent()
         self.workflow = StateGraph(QAOrganizationState)
         self._build_graph()
@@ -158,7 +160,13 @@ class QAOrchestrator:
         """Node to aggregate all reports and conclude the mission."""
         summary = f"QA Mission complete for {mission.priority} priority task. " if (mission := state.get("mission")) else "Mission failed."
         reports_summary = "\n".join(state.get("reports", []))
-        return {"final_report": f"{summary}\n\nReports:\n{reports_summary}"}
+        final_text = f"{summary}\n\nReports:\n{reports_summary}"
+        
+        # Save to Knowledge Base for learning
+        mission_id = f"mission_{hash(state['input'])}"
+        await self.ingestion_skill.run(mission_id, final_text)
+        
+        return {"final_report": final_text}
 
     def compile(self):
         return self.workflow.compile()
