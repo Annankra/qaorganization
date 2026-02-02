@@ -1,6 +1,7 @@
 from .state import QAOrganizationState
 from ..agents.qa_lead_agent import QALeadAgent
 from ..agents.unit_static_agent import UnitStaticAgent
+from ..agents.review_agent import ReviewAgent
 
 class QAOrchestrator:
     """Sets up and manages the LangGraph for the QA organization."""
@@ -8,6 +9,7 @@ class QAOrchestrator:
     def __init__(self):
         self.lead_agent = QALeadAgent()
         self.unit_static_agent = UnitStaticAgent()
+        self.review_agent = ReviewAgent()
         self.workflow = StateGraph(QAOrganizationState)
         self._build_graph()
 
@@ -17,6 +19,7 @@ class QAOrchestrator:
         # Define Nodes
         self.workflow.add_node("lead_planner", self._lead_planner_node)
         self.workflow.add_node("unit_static_node", self._unit_static_node)
+        self.workflow.add_node("reviewer", self._reviewer_node)
         self.workflow.add_node("finalizer", self._finalizer_node)
         
         # Define Edges
@@ -32,7 +35,8 @@ class QAOrchestrator:
             }
         )
         
-        self.workflow.add_edge("unit_static_node", "finalizer")
+        self.workflow.add_edge("unit_static_node", "reviewer")
+        self.workflow.add_edge("reviewer", "finalizer")
         self.workflow.add_edge("finalizer", END)
 
     def _route_tasks(self, state: QAOrganizationState) -> str:
@@ -53,6 +57,12 @@ class QAOrchestrator:
         lint_report = await self.unit_static_agent.run_lint(state["input"])
         coverage_report = await self.unit_static_agent.analyze_coverage()
         report = f"--- Unit & Static Analysis Report ---\n{lint_report}\n{coverage_report}"
+        return {"reports": [report]}
+
+    async def _reviewer_node(self, state: QAOrganizationState) -> Dict[str, Any]:
+        """Node for the ReviewAgent to audit gather reports."""
+        audit_report = await self.review_agent.audit_reports(state.get("reports", []))
+        report = f"--- Quality Audit Report ---\n{audit_report}"
         return {"reports": [report]}
 
     async def _lead_planner_node(self, state: QAOrganizationState) -> Dict[str, Any]:
