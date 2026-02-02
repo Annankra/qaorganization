@@ -26,6 +26,21 @@ class ExecutionEngine:
             temp_file.write(code)
             temp_path = temp_file.name
 
+        # Save a copy to artifacts/scripts for persistence
+        artifacts_scripts_dir = os.path.join("artifacts", "scripts")
+        os.makedirs(artifacts_scripts_dir, exist_ok=True)
+        # Use a descriptive name if possible, or a timestamped one
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        persistent_name = f"script_{timestamp}{file_extension}"
+        persistent_path = os.path.join(artifacts_scripts_dir, persistent_name)
+        try:
+            with open(persistent_path, "w") as f:
+                f.write(code)
+            logger.info(f"Saved persistent script copy to {persistent_path}")
+        except Exception as e:
+            logger.warning(f"Failed to save persistent script copy: {e}")
+
         try:
             full_command = command_prefix + [temp_path]
             logger.info(f"Executing command: {' '.join(full_command)}")

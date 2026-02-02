@@ -1,3 +1,5 @@
+import os
+import datetime
 from typing import Dict, Any
 from langgraph.graph import StateGraph, END
 from .state import QAOrganizationState
@@ -27,7 +29,21 @@ class QAOrchestrator:
         self.ingestion_skill = KnowledgeIngestionSkill()
         self.review_agent = ReviewAgent()
         self.workflow = StateGraph(QAOrganizationState)
+        self.artifacts_dir = "artifacts"
+        os.makedirs(self.artifacts_dir, exist_ok=True)
         self._build_graph()
+
+    def _save_artifact(self, name: str, content: str):
+        """Helper to save an artifact to the artifacts directory."""
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{timestamp}_{name}.md"
+        filepath = os.path.join(self.artifacts_dir, filename)
+        with open(filepath, "w") as f:
+            f.write(content)
+        # Also maintain a symlink-like current version for easier access if desired
+        latest_path = os.path.join(self.artifacts_dir, f"latest_{name}.md")
+        with open(latest_path, "w") as f:
+            f.write(content)
 
     def _build_graph(self):
         """Defines the graph nodes and edges."""
@@ -102,6 +118,7 @@ class QAOrchestrator:
         lint_report = await self.unit_static_agent.run_lint(state["input"])
         coverage_report = await self.unit_static_agent.analyze_coverage()
         report = f"--- Unit & Static Analysis Report ---\n{lint_report}\n{coverage_report}"
+        self._save_artifact("unit_static_report", report)
         return {"reports": [report], "visited_agents": ["UnitStatic"]}
 
     async def _functional_node(self, state: QAOrganizationState) -> Dict[str, Any]:
@@ -114,6 +131,7 @@ class QAOrchestrator:
         regression = await self.functional_agent.analyze_regression_needs(state["input"], mock_suite)
         
         report = f"--- Functional Test Scenarios ---\n{scenarios}\n\n--- Regression Analysis ---\n{regression}"
+        self._save_artifact("functional_report", report)
         return {"reports": [report], "visited_agents": ["Functional"]}
 
     async def _e2e_node(self, state: QAOrganizationState) -> Dict[str, Any]:
@@ -128,6 +146,7 @@ class QAOrchestrator:
         execution_results = await self.e2e_agent.execute_automation(automation)
         
         report = f"--- Critical User Journeys ---\n{journeys}\n\n--- Playwright Automation ---\n{automation}\n\n--- Execution Results ---\n{execution_results}"
+        self._save_artifact("e2e_report", report)
         return {"reports": [report], "visited_agents": ["E2E"]}
 
     async def _security_node(self, state: QAOrganizationState) -> Dict[str, Any]:
@@ -139,6 +158,7 @@ class QAOrchestrator:
         audit = await self.security_agent.perform_security_audit(state["input"])
         
         report = f"--- Threat Modeling Analysis ---\n{threat_model}\n\n--- Security Audit Findings ---\n{audit}"
+        self._save_artifact("security_report", report)
         return {"reports": [report], "visited_agents": ["Security"]}
 
     async def _performance_node(self, state: QAOrganizationState) -> Dict[str, Any]:
@@ -153,23 +173,27 @@ class QAOrchestrator:
         analysis = await self.performance_agent.analyze_performance_results(execution_results)
         
         report = f"--- Performance Load Test Plan ---\n{plan}\n\n--- Execution Results ---\n{execution_results}\n\n--- Performance Bottleneck Analysis ---\n{analysis}"
+        self._save_artifact("performance_report", report)
         return {"reports": [report], "visited_agents": ["Performance"]}
 
     async def _evaluator_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the EvalAgent to score the mission."""
         eval_result = await self.eval_agent.evaluate_mission(state)
         report = f"--- Mission Evaluation (Score: {eval_result.score}/10) ---\nRationale: {eval_result.rationale}\nFeedback: {', '.join(eval_result.feedback)}"
+        self._save_artifact("evaluation_report", report)
         return {"reports": [report]}
 
     async def _reviewer_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the ReviewAgent to audit gather reports."""
         audit_report = await self.review_agent.audit_reports(state.get("reports", []))
         report = f"--- Quality Audit Report ---\n{audit_report}"
+        self._save_artifact("quality_audit_report", report)
         return {"reports": [report]}
 
     async def _lead_planner_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the Lead Agent to analyze and plan."""
         mission = await self.lead_agent.analyze_and_plan(state["input"])
+        self._save_artifact("mission_plan", str(mission))
         return {"mission": mission}
 
     async def _finalizer_node(self, state: QAOrganizationState) -> Dict[str, Any]:
@@ -183,6 +207,8 @@ class QAOrchestrator:
         # Save to Knowledge Base for learning
         mission_id = f"mission_{hash(state['input'])}"
         await self.ingestion_skill.run(mission_id, final_summary)
+        
+        self._save_artifact("final_mission_report", final_summary)
         
         return {"final_report": final_summary}
 
