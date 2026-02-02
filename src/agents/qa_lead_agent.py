@@ -1,0 +1,75 @@
+from typing import List, Dict, Any
+from ..core.base_agent import BaseAgent
+from ..core.knowledge_base import kb
+from pydantic import BaseModel
+import json
+
+class TestMission(BaseModel):
+    priority: str
+    target_agents: List[str]
+    objectives: List[str]
+    risk_score: int
+
+class QALeadAgent(BaseAgent):
+    """The orchestrator agent responsible for strategy and prioritization."""
+    
+    def __init__(self, name: str = "QA_Lead_Orchestrator"):
+        super().__init__(
+            name=name,
+            role_description="Head of Software Quality, responsible for creating QA organizations and processes. Expert in orchestration and risk assessment."
+        )
+
+    async def analyze_and_plan(self, input_data: str) -> TestMission:
+        """Analyzes input (feature spec, PR) and creates a testing mission."""
+        
+        # 1. Retrieve relevant history/docs from Knowledge Base
+        relevant_docs = kb.search(input_data)
+        context = "\n".join([doc.page_content for doc in relevant_docs])
+        
+        # 2. Perform Risk Assessment and Mission Planning
+        prompt = f"""
+        Analyze the following input and create a testing mission.
+        
+        Input: {input_data}
+        
+        Historical Context:
+        {context}
+        
+        Respond ONLY with a JSON object in this format:
+        {{
+            "priority": "High" | "Medium" | "Low",
+            "target_agents": ["UnitStatic", "Functional", "Performance", "Security", etc.],
+            "objectives": ["string description of goals"],
+            "risk_score": 1-10
+        }}
+        """
+        
+        response_text = await self.chat(prompt)
+        
+        # Basic JSON extraction (naive, could be improved with better parsers)
+        try:
+            # Clean up potential markdown formatting
+            clean_json = response_text.strip().replace("```json", "").replace("```", "")
+            mission_data = json.loads(clean_json)
+            return TestMission(**mission_data)
+        except Exception as e:
+            self.add_to_memory("assistant", f"Error parsing mission JSON: {e}")
+            # Fallback
+            return TestMission(
+                priority="Medium",
+                target_agents=["Functional"],
+                objectives=["Validate basic functionality (failed to parse AI plan)"],
+                risk_score=5
+            )
+
+    async def assign_tasks(self, mission: TestMission):
+        """Logic to route work to specialist agents."""
+        # In a real implementation with LangGraph, this would trigger a graph traversal.
+        # For now, we simulate the assignment.
+        for agent_type in mission.target_agents:
+            self.add_to_memory("assistant", f"Assigning '{mission.priority}' task to {agent_type} agent.")
+            # Triggering actual agents would happen here.
+            
+    def get_system_prompt(self) -> str:
+        base_prompt = super().get_system_prompt()
+        return base_prompt + "\nFocus on high-level strategy, risk mitigation, and ensuring all testing types are considered."

@@ -1,0 +1,10 @@
+langchain
+langgraph
+langchain-openai
+pydantic
+qdrant-client
+openai
+python-dotenv
+pytest
+playwright
+rich
