@@ -87,8 +87,13 @@ class QAOrchestrator:
 
     async def _e2e_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the E2EAgent."""
+        # 1. Map journeys
         journeys = await self.e2e_agent.define_journeys(state["input"])
-        report = f"--- Critical User Journeys ---\n{journeys}"
+        
+        # 2. Generate automation for the first journey (simulation)
+        automation = await self.e2e_agent.generate_automation(journeys)
+        
+        report = f"--- Critical User Journeys ---\n{journeys}\n\n--- Playwright Automation ---\n{automation}"
         return {"reports": [report]}
 
     async def _reviewer_node(self, state: QAOrganizationState) -> Dict[str, Any]:
