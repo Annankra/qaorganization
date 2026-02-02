@@ -56,15 +56,16 @@ class QAOrchestrator:
                 "e2e": "e2e_node",
                 "security": "security_node",
                 "performance": "performance_node",
+                "review": "reviewer",
                 "end": "finalizer"
             }
         )
         
-        self.workflow.add_edge("unit_static_node", "reviewer")
-        self.workflow.add_edge("functional_node", "reviewer")
-        self.workflow.add_edge("e2e_node", "reviewer")
-        self.workflow.add_edge("security_node", "reviewer")
-        self.workflow.add_edge("performance_node", "reviewer")
+        self.workflow.add_edge("unit_static_node", "lead_planner")
+        self.workflow.add_edge("functional_node", "lead_planner")
+        self.workflow.add_edge("e2e_node", "lead_planner")
+        self.workflow.add_edge("security_node", "lead_planner")
+        self.workflow.add_edge("performance_node", "lead_planner")
         self.workflow.add_edge("reviewer", "evaluator")
         self.workflow.add_edge("evaluator", "finalizer")
         self.workflow.add_edge("finalizer", END)
@@ -75,18 +76,24 @@ class QAOrchestrator:
         if not mission or not mission.target_agents:
             return "end"
         
-        # Simple routing logic for now
-        if "UnitStatic" in mission.target_agents:
-            return "unit_static"
-        if "Functional" in mission.target_agents:
-            return "functional"
-        if "E2E" in mission.target_agents:
-            return "e2e"
-        if "Security" in mission.target_agents:
-            return "security"
-        if "Performance" in mission.target_agents:
-            return "performance"
+        visited = state.get("visited_agents", [])
         
+        for agent in mission.target_agents:
+            if agent == "UnitStatic" and "UnitStatic" not in visited:
+                return "unit_static"
+            if agent == "Functional" and "Functional" not in visited:
+                return "functional"
+            if agent == "E2E" and "E2E" not in visited:
+                return "e2e"
+            if agent == "Security" and "Security" not in visited:
+                return "security"
+            if agent == "Performance" and "Performance" not in visited:
+                return "performance"
+        
+        # If all target agents visited, go to review
+        if state.get("reports"):
+            return "review"
+            
         return "end"
 
     async def _unit_static_node(self, state: QAOrganizationState) -> Dict[str, Any]:
@@ -95,7 +102,7 @@ class QAOrchestrator:
         lint_report = await self.unit_static_agent.run_lint(state["input"])
         coverage_report = await self.unit_static_agent.analyze_coverage()
         report = f"--- Unit & Static Analysis Report ---\n{lint_report}\n{coverage_report}"
-        return {"reports": [report]}
+        return {"reports": [report], "visited_agents": ["UnitStatic"]}
 
     async def _functional_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the FunctionalAgent."""
@@ -107,18 +114,21 @@ class QAOrchestrator:
         regression = await self.functional_agent.analyze_regression_needs(state["input"], mock_suite)
         
         report = f"--- Functional Test Scenarios ---\n{scenarios}\n\n--- Regression Analysis ---\n{regression}"
-        return {"reports": [report]}
+        return {"reports": [report], "visited_agents": ["Functional"]}
 
     async def _e2e_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the E2EAgent."""
         # 1. Map journeys
         journeys = await self.e2e_agent.define_journeys(state["input"])
         
-        # 2. Generate automation for the first journey (simulation)
+        # 2. Generate automation
         automation = await self.e2e_agent.generate_automation(journeys)
         
-        report = f"--- Critical User Journeys ---\n{journeys}\n\n--- Playwright Automation ---\n{automation}"
-        return {"reports": [report]}
+        # 3. Execute automation
+        execution_results = await self.e2e_agent.execute_automation(automation)
+        
+        report = f"--- Critical User Journeys ---\n{journeys}\n\n--- Playwright Automation ---\n{automation}\n\n--- Execution Results ---\n{execution_results}"
+        return {"reports": [report], "visited_agents": ["E2E"]}
 
     async def _security_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the SecurityAgent."""
@@ -129,19 +139,21 @@ class QAOrchestrator:
         audit = await self.security_agent.perform_security_audit(state["input"])
         
         report = f"--- Threat Modeling Analysis ---\n{threat_model}\n\n--- Security Audit Findings ---\n{audit}"
-        return {"reports": [report]}
+        return {"reports": [report], "visited_agents": ["Security"]}
 
     async def _performance_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the PerformanceAgent."""
         # 1. Plan load test
         plan = await self.performance_agent.plan_performance_test(state["input"])
         
-        # 2. Analyze metrics (simulation)
-        mock_metrics = "Avg Latency: 450ms, P99: 1.2s, Error Rate: 0.5%, CPU Usage: 85% at peak."
-        analysis = await self.performance_agent.analyze_performance_results(mock_metrics)
+        # 2. Execute load test
+        execution_results = await self.performance_agent.execute_load_test(plan)
         
-        report = f"--- Performance Load Test Plan ---\n{plan}\n\n--- Performance Bottleneck Analysis ---\n{analysis}"
-        return {"reports": [report]}
+        # 3. Analyze metrics (using execution results instead of mock metrics)
+        analysis = await self.performance_agent.analyze_performance_results(execution_results)
+        
+        report = f"--- Performance Load Test Plan ---\n{plan}\n\n--- Execution Results ---\n{execution_results}\n\n--- Performance Bottleneck Analysis ---\n{analysis}"
+        return {"reports": [report], "visited_agents": ["Performance"]}
 
     async def _evaluator_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the EvalAgent to score the mission."""

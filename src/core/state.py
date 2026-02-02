@@ -16,5 +16,8 @@ class QAOrganizationState(TypedDict):
     # The current task being worked on
     current_task: str
     
+    # Track visited agents to support multi-agent missions
+    visited_agents: Annotated[List[str], operator.add]
+    
     # Final summary report
     final_report: str

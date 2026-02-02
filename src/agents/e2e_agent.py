@@ -1,6 +1,7 @@
 from ..core.base_agent import BaseAgent
 from ..skills.user_journey_mapping_skill import UserJourneyMappingSkill
 from ..skills.playwright_automation_skill import PlaywrightAutomationSkill
+from ..skills.test_execution_skill import TestExecutionSkill
 from ..core.tool_registry import registry
 from typing import Optional
 import os
@@ -17,8 +18,10 @@ class E2EAgent(BaseAgent):
         # Register skills
         self.mapping_skill = UserJourneyMappingSkill()
         self.automation_skill = PlaywrightAutomationSkill()
+        self.execution_skill = TestExecutionSkill()
         registry.register_skill(self.mapping_skill)
         registry.register_skill(self.automation_skill)
+        registry.register_skill(self.execution_skill)
 
     async def define_journeys(self, requirements: str) -> str:
         """Skill: Identifies critical user journeys."""
@@ -35,6 +38,14 @@ class E2EAgent(BaseAgent):
             return result.output
         else:
             return f"Failed to generate automation: {result.error}"
+
+    async def execute_automation(self, code: str) -> str:
+        """Skill: Executes Playwright automation code."""
+        result = await self.execute_tool("execute_test", code=code, test_type="playwright")
+        if result.success:
+            return f"Execution SUCCESS:\n{result.output}"
+        else:
+            return f"Execution FAILED:\n{result.output}\nError: {result.error}"
 
     def get_system_prompt(self) -> str:
         base_prompt = super().get_system_prompt()

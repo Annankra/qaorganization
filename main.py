@@ -26,6 +26,7 @@ async def run_mission(input_text: str):
         "input": input_text,
         "reports": [],
         "current_task": "start",
+        "visited_agents": [],
         "final_report": ""
     }
     
