@@ -123,8 +123,14 @@ class QAOrchestrator:
 
     async def _performance_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the PerformanceAgent."""
+        # 1. Plan load test
         plan = await self.performance_agent.plan_performance_test(state["input"])
-        report = f"--- Performance Load Test Plan ---\n{plan}"
+        
+        # 2. Analyze metrics (simulation)
+        mock_metrics = "Avg Latency: 450ms, P99: 1.2s, Error Rate: 0.5%, CPU Usage: 85% at peak."
+        analysis = await self.performance_agent.analyze_performance_results(mock_metrics)
+        
+        report = f"--- Performance Load Test Plan ---\n{plan}\n\n--- Performance Bottleneck Analysis ---\n{analysis}"
         return {"reports": [report]}
 
     async def _reviewer_node(self, state: QAOrganizationState) -> Dict[str, Any]:

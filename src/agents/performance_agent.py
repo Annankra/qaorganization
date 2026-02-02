@@ -1,5 +1,5 @@
-from ..core.base_agent import BaseAgent
 from ..skills.load_testing_skill import LoadTestingSkill
+from ..skills.multi_metric_analysis_skill import MultiMetricAnalysisSkill
 from ..core.tool_registry import registry
 
 class PerformanceAgent(BaseAgent):
@@ -12,7 +12,9 @@ class PerformanceAgent(BaseAgent):
         )
         # Register skills
         self.load_skill = LoadTestingSkill()
+        self.analysis_skill = MultiMetricAnalysisSkill()
         registry.register_skill(self.load_skill)
+        registry.register_skill(self.analysis_skill)
 
     async def plan_performance_test(self, requirements: str) -> str:
         """Skill: Generates a load test plan and script."""
@@ -21,6 +23,14 @@ class PerformanceAgent(BaseAgent):
             return result.output
         else:
             return f"Performance test planning failed: {result.error}"
+
+    async def analyze_performance_results(self, metrics: str) -> str:
+        """Skill: Analyzes performance metrics."""
+        result = await self.execute_tool("analyze_metrics", metrics_summary=metrics)
+        if result.success:
+            return result.output
+        else:
+            return f"Performance analysis failed: {result.error}"
 
     def get_system_prompt(self) -> str:
         base_prompt = super().get_system_prompt()
