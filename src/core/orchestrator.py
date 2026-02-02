@@ -105,8 +105,13 @@ class QAOrchestrator:
 
     async def _security_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the SecurityAgent."""
+        # 1. Generate threat model
+        threat_model = await self.security_agent.generate_threat_model(state["input"])
+        
+        # 2. Perform security audit
         audit = await self.security_agent.perform_security_audit(state["input"])
-        report = f"--- Security Audit Findings ---\n{audit}"
+        
+        report = f"--- Threat Modeling Analysis ---\n{threat_model}\n\n--- Security Audit Findings ---\n{audit}"
         return {"reports": [report]}
 
     async def _reviewer_node(self, state: QAOrganizationState) -> Dict[str, Any]:

@@ -1,5 +1,5 @@
-from ..core.base_agent import BaseAgent
 from ..skills.security_scanning_skill import SecurityScanningSkill
+from ..skills.threat_modeling_skill import ThreatModelingSkill
 from ..core.tool_registry import registry
 
 class SecurityAgent(BaseAgent):
@@ -12,7 +12,9 @@ class SecurityAgent(BaseAgent):
         )
         # Register skills
         self.scan_skill = SecurityScanningSkill()
+        self.threat_skill = ThreatModelingSkill()
         registry.register_skill(self.scan_skill)
+        registry.register_skill(self.threat_skill)
 
     async def perform_security_audit(self, target: str) -> str:
         """Skill: Performs a SAST/DAST audit."""
@@ -21,6 +23,14 @@ class SecurityAgent(BaseAgent):
             return result.output
         else:
             return f"Security audit failed: {result.error}"
+
+    async def generate_threat_model(self, requirements: str) -> str:
+        """Skill: Generates a threat model."""
+        result = await self.execute_tool("threat_model", requirements=requirements)
+        if result.success:
+            return result.output
+        else:
+            return f"Threat modeling failed: {result.error}"
 
     def get_system_prompt(self) -> str:
         base_prompt = super().get_system_prompt()
