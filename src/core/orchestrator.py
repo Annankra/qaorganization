@@ -61,6 +61,7 @@ class QAOrchestrator:
         self.workflow.add_node("e2e_node", self._e2e_node)
         self.workflow.add_node("security_node", self._security_node)
         self.workflow.add_node("performance_node", self._performance_node)
+        self.workflow.add_node("functional_consolidator", self._functional_consolidator_node)
         self.workflow.add_node("evaluator", self._evaluator_node)
         self.workflow.add_node("reviewer", self._reviewer_node)
         self.workflow.add_node("finalizer", self._finalizer_node)
@@ -86,9 +87,13 @@ class QAOrchestrator:
         )
         
         self.workflow.add_edge("unit_static_node", "lead_planner")
-        self.workflow.add_edge("functional_architect_node", "detail_specialist_node")
-        self.workflow.add_edge("detail_specialist_node", "business_expert_node")
-        self.workflow.add_edge("business_expert_node", "lead_planner")
+        
+        # Parallel Fan-in to Consolidator
+        self.workflow.add_edge("functional_architect_node", "functional_consolidator")
+        self.workflow.add_edge("detail_specialist_node", "functional_consolidator")
+        self.workflow.add_edge("business_expert_node", "functional_consolidator")
+        self.workflow.add_edge("functional_consolidator", "lead_planner")
+        
         self.workflow.add_edge("e2e_node", "lead_planner")
         self.workflow.add_edge("security_node", "lead_planner")
         self.workflow.add_edge("performance_node", "lead_planner")
@@ -108,12 +113,7 @@ class QAOrchestrator:
             if agent == "UnitStatic" and "UnitStatic" not in visited:
                 return "unit_static"
             if agent == "Functional" and "Functional" not in visited:
-                if "Functional_Architect" not in visited:
-                    return "functional_architect"
-                if "Detail_Specialist" not in visited:
-                    return "detail_specialist"
-                if "Business_Expert" not in visited:
-                    return "business_expert"
+                return ["functional_architect", "detail_specialist", "business_expert"]
             if agent == "E2E" and "E2E" not in visited:
                 return "e2e"
             if agent == "Security" and "Security" not in visited:
@@ -150,16 +150,19 @@ class QAOrchestrator:
         return {"reports": [report], "visited_agents": ["Detail_Specialist"]}
 
     async def _business_expert_node(self, state: QAOrganizationState) -> Dict[str, Any]:
-        """Consolidation & Finalization: Business Expert & Architect Collaboration."""
+        """Brainstorming: Business Expert."""
+        scenarios = await self.business_expert.generate_test_plan(state["input"])
+        report = f"--- Business Expert Brainstorm ---\n{scenarios}"
+        return {"reports": [report], "visited_agents": ["Business_Expert"]}
+
+    async def _functional_consolidator_node(self, state: QAOrganizationState) -> Dict[str, Any]:
+        """Consolidation & Finalization: Architect Collaborates with all specialist findings."""
         input_data = state["input"]
-        
-        # We need the previous reports to consolidate
         all_reports = state.get("reports", [])
+        
         architect_scenarios = next((r for r in all_reports if "Architect Preliminary" in r), "")
         detail_scenarios = next((r for r in all_reports if "Detail Specialist Brainstorm" in r), "")
-        
-        # Business expert does their independent brainstorm first
-        business_scenarios = await self.business_expert.generate_test_plan(input_data)
+        business_scenarios = next((r for r in all_reports if "Business Expert Brainstorm" in r), "")
         
         # Consolidation Phase
         consolidation_prompt = f"""
@@ -177,7 +180,7 @@ class QAOrchestrator:
         Requirement: {input_data}
         
         Your task is to collaborate and merge these into a single, world-class, production-grade functional test plan.
-        Ensure you include the mauticulous details from the Detail Specialist and the business value from the Business Expert.
+        Ensure you include the meticulous details from the Detail Specialist and the business value from the Business Expert.
         Remove redundancies and ensure comprehensive coverage.
         """
         
@@ -200,7 +203,7 @@ class QAOrchestrator:
             )
             self._save_artifact("testrail_case_upload_status", str(upload_result.output))
         
-        return {"reports": [report], "visited_agents": ["Functional", "Business_Expert"]}
+        return {"reports": [report], "visited_agents": ["Functional"]}
 
     async def _e2e_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the E2EAgent."""

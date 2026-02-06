@@ -59,3 +59,8 @@ venv/
 # IDE files
 .vscode/
 .idea/
+
+# Application Artifacts
+artifacts/
+node_modules/
+frontend/node_modules/

@@ -4,80 +4,50 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate } from 'k6/metrics';
 
-export let errorRate = new Rate('errors');
+// Define performance testing requirements
+const VUs = 50; // Number of virtual users
+const DURATION = '1m'; // Test duration
+const RESPONSE_TIME_THRESHOLD = 2000; // Response time threshold in milliseconds
+const ERROR_RATE_THRESHOLD = 0.05; // Error rate threshold (5%)
 
-export let options = {
-    stages: [
-        { duration: '1m', target: 10 }, // ramp up to 10 users
-        { duration: '3m', target: 10 }, // stay at 10 users
-        { duration: '1m', target: 0 },  // ramp down to 0 users
-    ],
+// Custom metrics
+const errorRate = new Rate('errors');
+
+export const options = {
+    vus: VUs,
+    duration: DURATION,
     thresholds: {
-        http_req_duration: ['p(95)<500'], // 95% of requests must complete below 500ms
-        errors: ['rate<0.01'], // error rate must be less than 1%
+        http_req_duration: [`p(95)<${RESPONSE_TIME_THRESHOLD}`], // 95% of requests should be below 2000ms
+        errors: [`rate<${ERROR_RATE_THRESHOLD}`], // Error rate should be below 5%
     },
 };
 
-const BASE_URL = 'https://your-application-url.com';
-const USERNAME = 'testuser';
-const PASSWORD = 'testpassword';
-
 export default function () {
-    // User login
-    let loginRes = http.post(`${BASE_URL}/api/login`, {
-        username: USERNAME,
-        password: PASSWORD,
+    const url = 'https://example.com/api/forgot-password'; // Replace with actual endpoint
+    const payload = JSON.stringify({
+        email: 'user@example.com', // Replace with a valid email
     });
 
-    check(loginRes, {
-        'logged in successfully': (resp) => resp.status === 200,
-    }) || errorRate.add(1);
-
-    let authToken = loginRes.json('token');
-
-    // Update user profile settings
-    let profileRes = http.put(`${BASE_URL}/api/user/profile`, JSON.stringify({
-        email: 'newemail@example.com',
-        name: 'New Name',
-    }), {
+    const params = {
         headers: {
-            Authorization: `Bearer ${authToken}`,
             'Content-Type': 'application/json',
         },
+    };
+
+    const res = http.post(url, payload, params);
+
+    // Check if the response status is 200
+    const success = check(res, {
+        'is status 200': (r) => r.status === 200,
     });
 
-    check(profileRes, {
-        'profile updated successfully': (resp) => resp.status === 200,
-    }) || errorRate.add(1);
+    // Record error rate
+    errorRate.add(!success);
 
-    // Upload profile image
-    let imageUploadRes = http.post(`${BASE_URL}/api/user/profile/image`, {
-        file: http.file(open('./path/to/image.jpg', 'b'), 'image.jpg'),
-    }, {
-        headers: {
-            Authorization: `Bearer ${authToken}`,
-        },
-    });
-
-    check(imageUploadRes, {
-        'image uploaded successfully': (resp) => resp.status === 200,
-    }) || errorRate.add(1);
-
-    // Email verification
-    let emailVerifyRes = http.get(`${BASE_URL}/api/user/verify-email`, {
-        headers: {
-            Authorization: `Bearer ${authToken}`,
-        },
-    });
-
-    check(emailVerifyRes, {
-        'email verified successfully': (resp) => resp.status === 200,
-    }) || errorRate.add(1);
-
+    // Simulate user think time
     sleep(1);
 }
 ```
-
 
 --- Execution Results ---
 Load Test FAILED:
@@ -89,124 +59,134 @@ Stdout:
  / __________ \  |_|\_\  \_____/ 
 
      execution: local
-        script: /var/folders/05/0z812bxj2lz4n79z43jkk1y00000gp/T/tmpnbbiquc2.js
+        script: /var/folders/05/0z812bxj2lz4n79z43jkk1y00000gp/T/tmpik2i9wc8.js
         output: -
 
-     scenarios: (100.00%) 1 scenario, 10 max VUs, 5m30s max duration (incl. graceful stop):
-              * default: Up to 10 looping VUs for 5m0s over 3 stages (gracefulRampDown: 30s, gracefulStop: 30s)
+     scenarios: (100.00%) 1 scenario, 50 max VUs, 1m30s max duration (incl. graceful stop):
+              * default: 50 looping VUs for 1m0s (gracefulStop: 30s)
 
 
-running (0m01.0s), 01/10 VUs, 717 complete and 0 interrupted iterations
-default   [   0% ] 01/10 VUs  0m01.0s/5m00.0s
+running (0m01.0s), 50/50 VUs, 0 complete and 0 interrupted iterations
+default   [   2% ] 50 VUs  0m01.0s/1m0s
 
-running (0m02.0s), 01/10 VUs, 1491 complete and 0 interrupted iterations
-default   [   1% ] 01/10 VUs  0m02.0s/5m00.0s
+running (0m02.0s), 50/50 VUs, 50 complete and 0 interrupted iterations
+default   [   3% ] 50 VUs  0m02.0s/1m0s
 
-running (0m03.0s), 01/10 VUs, 2234 complete and 0 interrupted iterations
-default   [   1% ] 01/10 VUs  0m03.0s/5m00.0s
+running (0m03.0s), 50/50 VUs, 100 complete and 0 interrupted iterations
+default   [   5% ] 50 VUs  0m03.0s/1m0s
 
-running (0m04.0s), 01/10 VUs, 2981 complete and 0 interrupted iterations
-default   [   1% ] 01/10 VUs  0m04.0s/5m00.0s
+running (0m04.0s), 50/50 VUs, 150 complete and 0 interrupted iterations
+default   [   7% ] 50 VUs  0m04.0s/1m0s
 
-running (0m05.0s), 01/10 VUs, 3729 complete and 0 interrupted iterations
-default   [   2% ] 01/10 VUs  0m05.0s/5m00.0s
+running (0m05.0s), 50/50 VUs, 199 complete and 0 interrupted iterations
+default   [   8% ] 50 VUs  0m05.0s/1m0s
 
-running (0m06.0s), 01/10 VUs, 4498 complete and 0 interrupted iterations
-default   [   2% ] 01/10 VUs  0m06.0s/5m00.0s
+running (0m06.0s), 50/50 VUs, 249 complete and 0 interrupted iterations
+default   [  10% ] 50 VUs  0m06.0s/1m0s
 
-running (0m07.0s), 02/10 VUs, 5512 complete and 0 interrupted iterations
-default   [   2% ] 02/10 VUs  0m07.0s/5m00.0s
+running (0m07.0s), 50/50 VUs, 299 complete and 0 interrupted iterations
+default   [  12% ] 50 VUs  0m07.0s/1m0s
 
-running (0m08.0s), 02/10 VUs, 6980 complete and 0 interrupted iterations
-default   [   3% ] 02/10 VUs  0m08.0s/5m00.0s
+running (0m08.0s), 50/50 VUs, 349 complete and 0 interrupted iterations
+default   [  13% ] 50 VUs  0m08.0s/1m0s
 
-running (0m09.0s), 02/10 VUs, 8421 complete and 0 interrupted iterations
-default   [   3% ] 02/10 VUs  0m09.0s/5m00.0s
+running (0m09.0s), 50/50 VUs, 399 complete and 0 interrupted iterations
+default   [  15% ] 50 VUs  0m09.0s/1m0s
 
-running (0m10.0s), 02/10 VUs, 9953 complete and 0 interrupted iterations
-default   [   3% ] 02/10 VUs  0m10.0s/5m00.0s
+running (0m10.0s), 50/50 VUs, 449 complete and 0 interrupted iterations
+default   [  17% ] 50 VUs  0m10.0s/1m0s
 
-running (0m11.0s), 02/10 VUs, 11469 complete and 0 interrupted iterations
-default   [   4% ] 02/10 VUs  0m11.0s/5m00.0s
+running (0m11.0s), 50/50 VUs, 499 complete and 0 interrupted iterations
+default   [  18% ] 50 VUs  0m11.0s/1m0s
 
-running (0m12.0s), 02/10 VUs, 12979 complete and 0 interrupted iterations
-default   [   4% ] 02/10 VUs  0m12.0s/5m00.0s
+running (0m12.0s), 50/50 VUs, 548 complete and 0 interrupted iterations
+default   [  20% ] 50 VUs  0m12.0s/1m0s
 
-running (0m13.0s), 02/10 VUs, 14449 complete and 0 interrupted iterations
-default   [   4% ] 02/10 VUs  0m13.0s/5m00.0s
+running (0m13.0s), 50/50 VUs, 597 complete and 0 interrupted iterations
+default   [  22% ] 50 VUs  0m13.0s/1m0s
 
-running (0m14.0s), 03/10 VUs, 16411 complete and 0 interrupted iterations
-default   [   5% ] 03/10 VUs  0m14.0s/5m00.0s
+running (0m14.0s), 50/50 VUs, 647 complete and 0 interrupted iterations
+default   [  23% ] 50 VUs  0m14.0s/1m0s
 
-running (0m15.0s), 03/10 VUs, 18652 complete and 0 interrupted iterations
-default   [   5% ] 03/10 VUs  0m15.0s/5m00.0s
+running (0m15.0s), 50/50 VUs, 697 complete and 0 interrupted iterations
+default   [  25% ] 50 VUs  0m15.0s/1m0s
 
-running (0m16.0s), 03/10 VUs, 20837 complete and 0 interrupted iterations
-default   [   5% ] 03/10 VUs  0m16.0s/5m00.0s
+running (0m16.0s), 50/50 VUs, 747 complete and 0 interrupted iterations
+default   [  27% ] 50 VUs  0m16.0s/1m0s
 
-running (0m17.0s), 03/10 VUs, 23045 complete and 0 interrupted iterations
-default   [   6% ] 03/10 VUs  0m17.0s/5m00.0s
+running (0m17.0s), 50/50 VUs, 796 complete and 0 interrupted iterations
+default   [  28% ] 50 VUs  0m17.0s/1m0s
 
-running (0m18.0s), 03/10 VUs, 25303 complete and 0 interrupted iterations
-default   [   6% ] 03/10 VUs  0m18.0s/5m00.0s
+running (0m18.0s), 50/50 VUs, 843 complete and 0 interrupted iterations
+default   [  30% ] 50 VUs  0m18.0s/1m0s
 
-running (0m19.0s), 03/10 VUs, 27466 complete and 0 interrupted iterations
-default   [   6% ] 03/10 VUs  0m19.0s/5m00.0s
+running (0m19.0s), 50/50 VUs, 892 complete and 0 interrupted iterations
+default   [  32% ] 50 VUs  0m19.0s/1m0s
 
-running (0m20.0s), 03/10 VUs, 29724 complete and 0 interrupted iterations
-default   [   7% ] 03/10 VUs  0m20.0s/5m00.0s
+running (0m20.0s), 50/50 VUs, 941 complete and 0 interrupted iterations
+default   [  33% ] 50 VUs  0m20.0s/1m0s
 
-running (0m21.0s), 04/10 VUs, 32649 complete and 0 interrupted iterations
-default   [   7% ] 0
+running (0m21.0s), 50/50 VUs, 991 complete and 0 interrupted iterations
+default   [  35% ] 50 VUs  0m21.0s/1m0s
+
+running (0m22.0s), 50/50 VUs, 1030 complete and 0 interrupted iterations
+default   [  37% ] 50 VUs  0m22.0s/1m0s
+
+running (0m23.0s), 50/50 VUs, 1074 complete and 0 interrupted 
 ... [Output Truncated for Brevity] ...
 Error: None
 
 --- Performance Bottleneck Analysis ---
-Based on the provided performance metrics from the load test, here is an analysis of the system's performance, potential bottlenecks, scalability issues, and suggestions for optimization:
+Based on the provided performance metrics from the load test, here is an analysis of the system's performance along with potential bottlenecks and optimization suggestions:
 
-### Analysis
+### Analysis:
 
-1. **Test Configuration and Execution:**
-   - The test was configured to run with a maximum of 10 Virtual Users (VUs) over a duration of 5 minutes with a 30-second graceful ramp-down and stop.
-   - The test failed, indicating that the system did not meet the expected performance criteria.
+1. **Test Configuration**:
+   - The load test was configured to run with 50 Virtual Users (VUs) for a duration of 1 minute, with a graceful stop period of 30 seconds.
+   - The test was executed locally, which might not fully represent a production environment.
 
-2. **Performance Metrics:**
-   - The test started with 1 VU and gradually increased to 4 VUs within the first 21 seconds.
-   - The number of complete iterations increased rapidly, suggesting that the system could handle the initial load effectively.
-   - However, the test failed early, which might indicate a potential bottleneck or a configuration issue.
+2. **Test Execution**:
+   - The test failed, but no specific error messages were provided in the output. This suggests that the failure might be related to unmet performance criteria rather than a specific error.
+   - The test ran for 23 seconds before the output was truncated, completing 1074 iterations.
 
-3. **Potential Bottlenecks:**
-   - **Resource Limitation:** The rapid increase in iterations suggests that the system might be initially capable of handling the load, but a resource limitation (CPU, memory, network bandwidth) could be causing the test to fail as more VUs are introduced.
-   - **Concurrency Handling:** The system might have issues handling concurrent requests efficiently, leading to failures as the number of VUs increases.
-   - **Configuration Limits:** There might be configuration limits (e.g., thread pool size, connection limits) that are being hit as the load increases.
+3. **Performance Metrics**:
+   - The system maintained 50 VUs consistently throughout the test.
+   - The number of completed iterations increased steadily, indicating that the system was processing requests without interruption.
+   - The percentage completion of the test suggests that the system was on track to complete the test within the allocated time.
 
-4. **Scalability Issues:**
-   - The system's ability to scale with increasing VUs is questionable since the test failed early. This suggests that the system might not be able to handle higher loads or scale effectively beyond a certain point.
+### Potential Bottlenecks and Scalability Issues:
 
-5. **Regression Indicators:**
-   - The test failure could indicate a regression if previous tests with similar configurations were successful. This might be due to recent changes in the system or its environment.
+1. **Resource Saturation**:
+   - The test was conducted with a fixed number of VUs. If the system is not scaling well with this load, it might indicate resource saturation (CPU, memory, I/O, etc.).
+   - Since the test was local, it might not reflect network latency or bandwidth issues that could occur in a real-world scenario.
 
-### Suggestions for Optimization
+2. **Concurrency Handling**:
+   - If the system struggles with 50 concurrent users, it might indicate issues with handling concurrent requests, such as database locks, thread contention, or inefficient resource management.
 
-1. **Resource Monitoring:**
-   - Monitor CPU, memory, disk I/O, and network usage during the test to identify resource bottlenecks.
-   - Ensure that the system has adequate resources to handle the expected load.
+3. **Performance Criteria**:
+   - The test failure might be due to unmet performance criteria such as response time, throughput, or error rate, which are not explicitly mentioned in the output.
 
-2. **Concurrency and Configuration Tuning:**
-   - Review and optimize server configurations related to concurrency, such as thread pools, database connections, and network settings.
-   - Consider increasing limits if they are being reached prematurely.
+### Optimization Suggestions:
 
-3. **Load Balancing:**
-   - Implement or optimize load balancing strategies to distribute the load more evenly across servers or instances.
+1. **Environment Setup**:
+   - Consider running the test in a production-like environment to better simulate real-world conditions, including network latency and distributed load.
 
-4. **Code Optimization:**
-   - Profile the application to identify inefficient code paths or queries that could be optimized for better performance under load.
+2. **Resource Monitoring**:
+   - Monitor system resources (CPU, memory, disk I/O, network) during the test to identify any bottlenecks or saturation points.
+   - Use tools like Grafana, Prometheus, or other APM solutions to gather detailed metrics.
 
-5. **Incremental Load Testing:**
-   - Conduct incremental load tests to gradually increase the load and identify the point at which performance degrades.
-   - Use these tests to pinpoint specific areas that need optimization.
+3. **Scalability Enhancements**:
+   - Evaluate the system's scalability by incrementally increasing the number of VUs and observing the system's behavior.
+   - Optimize database queries, indexing, and connection pooling to improve performance under load.
 
-6. **Review Recent Changes:**
-   - If this test result is a regression, review recent changes to the application or infrastructure that could have impacted performance.
+4. **Concurrency Improvements**:
+   - Review and optimize code for concurrency, ensuring efficient use of threads and minimizing contention.
+   - Implement caching strategies to reduce load on backend systems and improve response times.
 
-By addressing these areas, you can improve the system's ability to handle higher loads, reduce bottlenecks, and ensure scalability.
+5. **Error Handling and Logging**:
+   - Enhance error handling and logging to capture more detailed information about test failures, which can aid in diagnosing issues.
+
+6. **Load Balancing and Distribution**:
+   - If applicable, consider implementing or optimizing load balancing strategies to distribute the load more evenly across servers.
+
+By addressing these areas, the system's performance under load can be improved, leading to better scalability and reliability.

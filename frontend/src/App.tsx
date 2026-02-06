@@ -34,15 +34,24 @@ interface NodeState {
 const INITIAL_NODES: NodeState[] = [
   { id: 'lead_planner', label: 'Lead Orchestrator', icon: <Cpu size={20} />, description: 'Planning testing mission...', status: 'idle' },
   { id: 'unit_static_node', label: 'Unit/Static Analysis', icon: <Search size={20} />, description: 'Analyzing code quality...', status: 'idle' },
-  { id: 'functional_architect_node', label: 'Functional Architect', icon: <Layers size={20} />, description: 'Designing test strategy...', status: 'idle' },
-  { id: 'detail_specialist_node', label: 'Detail Specialist', icon: <Glasses size={20} />, description: 'Digging into edge cases...', status: 'idle' },
+  { id: 'functional_architect_node', label: 'Functional Architect', icon: <Layers size={20} />, description: 'Brainstorming strategy...', status: 'idle' },
+  { id: 'detail_specialist_node', label: 'Detail Specialist', icon: <Glasses size={20} />, description: 'Identifying edge cases...', status: 'idle' },
   { id: 'business_expert_node', label: 'Business Logic Expert', icon: <Briefcase size={20} />, description: 'Validating business value...', status: 'idle' },
+  { id: 'functional_consolidator', label: 'Collaboration Consolidator', icon: <UserCheck size={20} />, description: 'Merging specialist insights...', status: 'idle' },
   { id: 'e2e_node', label: 'E2E Specialist', icon: <LayoutDashboard size={20} />, description: 'Testing user journeys...', status: 'idle' },
   { id: 'security_node', label: 'Security Specialist', icon: <Shield size={20} />, description: 'Scanning for vulnerabilities...', status: 'idle' },
   { id: 'performance_node', label: 'Performance Expert', icon: <Activity size={20} />, description: 'Running load tests...', status: 'idle' },
-  { id: 'reviewer', label: 'Quality Reviewer', icon: <UserCheck size={20} />, description: 'Consolidating findings...', status: 'idle' },
+  { id: 'reviewer', label: 'Quality Reviewer', icon: <UserCheck size={20} />, description: 'Auditing test findings...', status: 'idle' },
   { id: 'finalizer', label: 'Report Finalizer', icon: <FileText size={20} />, description: 'Generating final report...', status: 'idle' },
 ];
+
+const AGENT_MAP: Record<string, string[]> = {
+  'UnitStatic': ['unit_static_node'],
+  'Functional': ['functional_architect_node', 'detail_specialist_node', 'business_expert_node'],
+  'E2E': ['e2e_node'],
+  'Security': ['security_node'],
+  'Performance': ['performance_node'],
+};
 
 function App() {
   const [missionInput, setMissionInput] = useState('');
@@ -111,12 +120,39 @@ function App() {
         break;
       case 'node_update':
         const nodeName = payload.node;
-        addLog(`Processing at node: ${nodeName}`);
-        setNodes(prev => prev.map(n => {
-          if (n.id === nodeName) return { ...n, status: 'active' };
-          if (n.status === 'active') return { ...n, status: 'completed' };
-          return n;
-        }));
+        addLog(`Node reached: ${nodeName}`);
+
+        setNodes(prev => {
+          let updated = prev.map(n => {
+            if (n.id === nodeName) return { ...n, status: 'completed' as const };
+            return n;
+          });
+
+          // If Lead Planner finishes, activate target specialists
+          if (nodeName === 'lead_planner' && payload.data?.mission?.target_agents) {
+            const targets = payload.data.mission.target_agents as string[];
+            updated = updated.map(n => {
+              const isTarget = Object.entries(AGENT_MAP).some(([cat, ids]) =>
+                targets.includes(cat) && ids.includes(n.id)
+              );
+              if (isTarget) return { ...n, status: 'active' as const };
+              return n;
+            });
+          }
+
+          // If any functional specialist finishes, and it's not the lead planner, 
+          // we check if we should activate the consolidator
+          const functionalSpecs = ['functional_architect_node', 'detail_specialist_node', 'business_expert_node'];
+          const allFunctionalDone = functionalSpecs.every(id =>
+            updated.find(n => n.id === id)?.status === 'completed'
+          );
+
+          if (allFunctionalDone && updated.find(n => n.id === 'functional_consolidator')?.status === 'idle') {
+            updated = updated.map(n => n.id === 'functional_consolidator' ? { ...n, status: 'active' as const } : n);
+          }
+
+          return updated;
+        });
 
         if (nodeName === 'finalizer' && payload.data?.final_report) {
           setFinalReport(payload.data.final_report);
@@ -240,6 +276,7 @@ function App() {
         .markdown-content ul, .markdown-content ol {
           margin-left: 1.5rem;
           margin-bottom: 1rem;
+          color: #cbd5e1;
         }
         .markdown-content li {
           margin-bottom: 0.5rem;
