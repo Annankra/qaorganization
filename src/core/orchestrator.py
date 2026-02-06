@@ -7,6 +7,7 @@ from ..agents.qa_lead_agent import QALeadAgent
 from ..agents.unit_static_agent import UnitStaticAgent
 from ..agents.review_agent import ReviewAgent
 from ..agents.functional_agent import FunctionalAgent
+from ..agents.test_data_agent import TestDataAgent
 from ..agents.e2e_agent import E2EAgent
 from ..agents.security_agent import SecurityAgent
 from ..agents.performance_agent import PerformanceAgent
@@ -24,7 +25,7 @@ class QAOrchestrator:
         self.functional_architect = FunctionalAgent(name="Functional_Architect", specialization="architect")
         self.detail_specialist = FunctionalAgent(name="Detail_Specialist", specialization="detail")
         self.business_expert = FunctionalAgent(name="Business_Expert", specialization="business")
-        
+        self.test_data_agent = TestDataAgent()
         self.e2e_agent = E2EAgent()
         self.security_agent = SecurityAgent()
         self.performance_agent = PerformanceAgent()
@@ -59,6 +60,7 @@ class QAOrchestrator:
         self.workflow.add_node("functional_architect_node", self._functional_architect_node)
         self.workflow.add_node("detail_specialist_node", self._detail_specialist_node)
         self.workflow.add_node("business_expert_node", self._business_expert_node)
+        self.workflow.add_node("test_data_node", self._test_data_node)
         self.workflow.add_node("e2e_node", self._e2e_node)
         self.workflow.add_node("security_node", self._security_node)
         self.workflow.add_node("performance_node", self._performance_node)
@@ -82,6 +84,7 @@ class QAOrchestrator:
                 "functional_architect": "functional_architect_node",
                 "detail_specialist": "detail_specialist_node",
                 "business_expert": "business_expert_node",
+                "test_data": "test_data_node",
                 "e2e": "e2e_node",
                 "security": "security_node",
                 "performance": "performance_node",
@@ -97,6 +100,7 @@ class QAOrchestrator:
         self.workflow.add_edge("functional_architect_node", "functional_consolidator")
         self.workflow.add_edge("detail_specialist_node", "functional_consolidator")
         self.workflow.add_edge("business_expert_node", "functional_consolidator")
+        self.workflow.add_edge("test_data_node", "functional_consolidator")
         self.workflow.add_edge("functional_consolidator", "router_node")
         
         self.workflow.add_edge("e2e_node", "router_node")
@@ -122,7 +126,7 @@ class QAOrchestrator:
             if agent == "UnitStatic" and "UnitStatic" not in visited:
                 return "unit_static"
             if agent == "Functional" and "Functional" not in visited:
-                return ["functional_architect", "detail_specialist", "business_expert"]
+                return ["functional_architect", "detail_specialist", "business_expert", "test_data"]
             if agent == "E2E" and "E2E" not in visited:
                 return "e2e"
             if agent == "Security" and "Security" not in visited:
@@ -164,6 +168,12 @@ class QAOrchestrator:
         report = f"--- Business Expert Brainstorm ---\n{scenarios}"
         return {"reports": [report], "visited_agents": ["Business_Expert"]}
 
+    async def _test_data_node(self, state: QAOrganizationState) -> Dict[str, Any]:
+        """Test Data Strategy: Specialist."""
+        report = await self.test_data_agent.generate_data_strategy(state["input"])
+        self._save_artifact("test_data_report", report)
+        return {"reports": [report]}
+
     async def _functional_consolidator_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Consolidation & Finalization: Architect Collaborates with all specialist findings."""
         input_data = state["input"]
@@ -172,12 +182,15 @@ class QAOrchestrator:
         architect_scenarios = next((r for r in all_reports if "Architect Preliminary" in r), "")
         detail_scenarios = next((r for r in all_reports if "Detail Specialist Brainstorm" in r), "")
         business_scenarios = next((r for r in all_reports if "Business Expert Brainstorm" in r), "")
+        test_data_report = next((r for r in all_reports if "Test Data Strategy" in r or "dataset examples" in r.lower()), "No test data strategy generated.")
         
         # Consolidation Phase
         consolidation_prompt = f"""
-        You are the Functional Architect. You have received test scenarios from three specialists:
+        You are the Quality Architect. You are leading a team of specialists to design a comprehensive testing mission.
         
-        ARCHITECT PRELIMINARY:
+        We have findings from three functional specialists and one Test Data specialist:
+        
+        ARCHITECT:
         {architect_scenarios}
         
         DETAIL SPECIALIST:
@@ -186,10 +199,13 @@ class QAOrchestrator:
         BUSINESS EXPERT:
         {business_scenarios}
         
+        TEST DATA STRATEGY:
+        {test_data_report}
+        
         Requirement: {input_data}
         
         Your task is to collaborate and merge these into a single, world-class, production-grade functional test plan.
-        Ensure you include the meticulous details from the Detail Specialist and the business value from the Business Expert.
+        Ensure you include the meticulous details from the Detail Specialist, the business value from the Business Expert, AND the production-grade test data strategy.
         Remove redundancies and ensure comprehensive coverage.
         """
         

@@ -14,7 +14,8 @@ import {
   Glasses,
   Briefcase,
   ToggleRight,
-  ToggleLeft
+  ToggleLeft,
+  Database
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -39,6 +40,7 @@ const INITIAL_NODES: NodeState[] = [
   { id: 'functional_architect_node', label: 'Functional Architect', icon: <Layers size={20} />, description: 'Brainstorming strategy...', status: 'idle' },
   { id: 'detail_specialist_node', label: 'Detail Specialist', icon: <Glasses size={20} />, description: 'Identifying edge cases...', status: 'idle' },
   { id: 'business_expert_node', label: 'Business Logic Expert', icon: <Briefcase size={20} />, description: 'Validating business value...', status: 'idle' },
+  { id: 'test_data_node', label: 'Test Data Specialist', icon: <Database size={20} />, description: 'Designing data sets...', status: 'idle' },
   { id: 'functional_consolidator', label: 'Collaboration Consolidator', icon: <UserCheck size={20} />, description: 'Merging specialist insights...', status: 'idle' },
   { id: 'e2e_node', label: 'E2E Specialist', icon: <LayoutDashboard size={20} />, description: 'Testing user journeys...', status: 'idle' },
   { id: 'security_node', label: 'Security Specialist', icon: <Shield size={20} />, description: 'Scanning for vulnerabilities...', status: 'idle' },
@@ -49,7 +51,7 @@ const INITIAL_NODES: NodeState[] = [
 
 const AGENT_MAP: Record<string, string[]> = {
   'UnitStatic': ['unit_static_node'],
-  'Functional': ['functional_architect_node', 'detail_specialist_node', 'business_expert_node'],
+  'Functional': ['functional_architect_node', 'detail_specialist_node', 'business_expert_node', 'test_data_node'],
   'E2E': ['e2e_node'],
   'Security': ['security_node'],
   'Performance': ['performance_node'],
@@ -160,8 +162,6 @@ function App() {
 
           // Activation logic moved to router_node or lead_planner completion
           if ((nodeName === 'lead_planner' || nodeName === 'router_node') && payload.data?.mission?.target_agents) {
-            // Prioritize local state selectedAgents if mission just started
-            // or use manual_agents from payload if backend confirmed it
             const targets = (payload.data.manual_agents || (selectedAgents.length > 0 ? selectedAgents : payload.data.mission.target_agents)) as string[];
 
             updated = updated.map(n => {
@@ -174,8 +174,8 @@ function App() {
             });
           }
 
-          // Functional consolidation trigger logic
-          const functionalSpecs = ['functional_architect_node', 'detail_specialist_node', 'business_expert_node'];
+          // Functional consolidation trigger logic - now includes test_data_node
+          const functionalSpecs = ['functional_architect_node', 'detail_specialist_node', 'business_expert_node', 'test_data_node'];
           const actualFunctionalNodes = updated.filter(n => functionalSpecs.includes(n.id));
           const isFunctionalPhaseDone = actualFunctionalNodes.every(n => n.status === 'completed' || n.status === 'idle') &&
             actualFunctionalNodes.some(n => n.status === 'completed');
