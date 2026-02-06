@@ -5,12 +5,14 @@ import {
   Activity,
   CheckCircle2,
   LayoutDashboard,
-  Zap,
   Shield,
   Search,
   Cpu,
   FileText,
-  UserCheck
+  UserCheck,
+  Layers,
+  Glasses,
+  Briefcase
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -32,7 +34,9 @@ interface NodeState {
 const INITIAL_NODES: NodeState[] = [
   { id: 'lead_planner', label: 'Lead Orchestrator', icon: <Cpu size={20} />, description: 'Planning testing mission...', status: 'idle' },
   { id: 'unit_static_node', label: 'Unit/Static Analysis', icon: <Search size={20} />, description: 'Analyzing code quality...', status: 'idle' },
-  { id: 'functional_node', label: 'Functional Expert', icon: <Zap size={20} />, description: 'Verifying core features...', status: 'idle' },
+  { id: 'functional_architect_node', label: 'Functional Architect', icon: <Layers size={20} />, description: 'Designing test strategy...', status: 'idle' },
+  { id: 'detail_specialist_node', label: 'Detail Specialist', icon: <Glasses size={20} />, description: 'Digging into edge cases...', status: 'idle' },
+  { id: 'business_expert_node', label: 'Business Logic Expert', icon: <Briefcase size={20} />, description: 'Validating business value...', status: 'idle' },
   { id: 'e2e_node', label: 'E2E Specialist', icon: <LayoutDashboard size={20} />, description: 'Testing user journeys...', status: 'idle' },
   { id: 'security_node', label: 'Security Specialist', icon: <Shield size={20} />, description: 'Scanning for vulnerabilities...', status: 'idle' },
   { id: 'performance_node', label: 'Performance Expert', icon: <Activity size={20} />, description: 'Running load tests...', status: 'idle' },

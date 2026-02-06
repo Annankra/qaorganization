@@ -10,11 +10,21 @@ import json
 class FunctionalAgent(BaseAgent):
     """Specialist agent for functional testing and regression."""
     
-    def __init__(self, name: Optional[str] = None):
+    def __init__(self, name: Optional[str] = None, specialization: Optional[str] = None):
+        self.specialization = specialization
         name = name or os.getenv("FUNCTIONAL_AGENT_NAME", "Functional_Specialist")
+        
+        role_map = {
+            "architect": "Senior QA Architect focused on high-level test strategy, coverage gaps, and structural integrity of the test suite.",
+            "detail": "Meticulous QA Specialist with extreme attention to detail, edge cases, boundary values, and UI/UX subtleties.",
+            "business": "Business-focused QA Analyst who ensures requirements meet user expectations and business logic is bulletproof."
+        }
+        
+        description = role_map.get(specialization, "Expert in functional testing, manual testing strategies, and regression suite management.")
+        
         super().__init__(
             name=name,
-            role_description="Expert in functional testing, manual testing strategies, and regression suite management."
+            role_description=description
         )
         # Register skills
         self.scenario_skill = ScenarioGenerationSkill()
@@ -74,4 +84,12 @@ class FunctionalAgent(BaseAgent):
 
     def get_system_prompt(self) -> str:
         base_prompt = super().get_system_prompt()
-        return base_prompt + "\nFocus on business logic correctness, user expectations, and comprehensive coverage of functional requirements."
+        
+        specialization_prompts = {
+            "architect": "Focus on global coverage, integration points, and high-level scenario architecture. Ensure scenarios are reusable and well-structured.",
+            "detail": "Focus on the 'unhappy path', negative testing, edge cases, and tiny details that others might miss. Be extremely thorough with verification steps.",
+            "business": "Focus on the end-user perspective and business value. Ensure that every scenario directly validates a core business requirement or user goal."
+        }
+        
+        focus = specialization_prompts.get(self.specialization, "Focus on business logic correctness, user expectations, and comprehensive coverage of functional requirements.")
+        return base_prompt + f"\n{focus}"

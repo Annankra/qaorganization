@@ -20,7 +20,11 @@ class QAOrchestrator:
     def __init__(self):
         self.lead_agent = QALeadAgent()
         self.unit_static_agent = UnitStaticAgent()
-        self.functional_agent = FunctionalAgent()
+        # Initialize 3 Specialist Functional Agents
+        self.functional_architect = FunctionalAgent(name="Functional_Architect", specialization="architect")
+        self.detail_specialist = FunctionalAgent(name="Detail_Specialist", specialization="detail")
+        self.business_expert = FunctionalAgent(name="Business_Expert", specialization="business")
+        
         self.e2e_agent = E2EAgent()
         self.security_agent = SecurityAgent()
         self.performance_agent = PerformanceAgent()
@@ -51,7 +55,9 @@ class QAOrchestrator:
         # Define Nodes
         self.workflow.add_node("lead_planner", self._lead_planner_node)
         self.workflow.add_node("unit_static_node", self._unit_static_node)
-        self.workflow.add_node("functional_node", self._functional_node)
+        self.workflow.add_node("functional_architect_node", self._functional_architect_node)
+        self.workflow.add_node("detail_specialist_node", self._detail_specialist_node)
+        self.workflow.add_node("business_expert_node", self._business_expert_node)
         self.workflow.add_node("e2e_node", self._e2e_node)
         self.workflow.add_node("security_node", self._security_node)
         self.workflow.add_node("performance_node", self._performance_node)
@@ -68,7 +74,9 @@ class QAOrchestrator:
             self._route_tasks,
             {
                 "unit_static": "unit_static_node",
-                "functional": "functional_node",
+                "functional_architect": "functional_architect_node",
+                "detail_specialist": "detail_specialist_node",
+                "business_expert": "business_expert_node",
                 "e2e": "e2e_node",
                 "security": "security_node",
                 "performance": "performance_node",
@@ -78,7 +86,9 @@ class QAOrchestrator:
         )
         
         self.workflow.add_edge("unit_static_node", "lead_planner")
-        self.workflow.add_edge("functional_node", "lead_planner")
+        self.workflow.add_edge("functional_architect_node", "detail_specialist_node")
+        self.workflow.add_edge("detail_specialist_node", "business_expert_node")
+        self.workflow.add_edge("business_expert_node", "lead_planner")
         self.workflow.add_edge("e2e_node", "lead_planner")
         self.workflow.add_edge("security_node", "lead_planner")
         self.workflow.add_edge("performance_node", "lead_planner")
@@ -98,7 +108,12 @@ class QAOrchestrator:
             if agent == "UnitStatic" and "UnitStatic" not in visited:
                 return "unit_static"
             if agent == "Functional" and "Functional" not in visited:
-                return "functional"
+                if "Functional_Architect" not in visited:
+                    return "functional_architect"
+                if "Detail_Specialist" not in visited:
+                    return "detail_specialist"
+                if "Business_Expert" not in visited:
+                    return "business_expert"
             if agent == "E2E" and "E2E" not in visited:
                 return "e2e"
             if agent == "Security" and "Security" not in visited:
@@ -121,29 +136,71 @@ class QAOrchestrator:
         self._save_artifact("unit_static_report", report)
         return {"reports": [report], "visited_agents": ["UnitStatic"]}
 
-    async def _functional_node(self, state: QAOrganizationState) -> Dict[str, Any]:
-        """Node for the FunctionalAgent."""
-        # 1. Generate new scenarios
-        scenarios = await self.functional_agent.generate_test_plan(state["input"])
+    async def _functional_architect_node(self, state: QAOrganizationState) -> Dict[str, Any]:
+        """Brainstorming: Architect."""
+        scenarios = await self.functional_architect.generate_test_plan(state["input"])
+        report = f"--- Architect Preliminary Brainstorm ---\n{scenarios}"
+        # We store the preliminary report in a temporary state key or just add to reports
+        return {"reports": [report], "visited_agents": ["Functional_Architect"]}
+
+    async def _detail_specialist_node(self, state: QAOrganizationState) -> Dict[str, Any]:
+        """Brainstorming: Detail Specialist."""
+        scenarios = await self.detail_specialist.generate_test_plan(state["input"])
+        report = f"--- Detail Specialist Brainstorm ---\n{scenarios}"
+        return {"reports": [report], "visited_agents": ["Detail_Specialist"]}
+
+    async def _business_expert_node(self, state: QAOrganizationState) -> Dict[str, Any]:
+        """Consolidation & Finalization: Business Expert & Architect Collaboration."""
+        input_data = state["input"]
         
-        # 2. Analyze regression needs using real Knowledge Base context
+        # We need the previous reports to consolidate
+        all_reports = state.get("reports", [])
+        architect_scenarios = next((r for r in all_reports if "Architect Preliminary" in r), "")
+        detail_scenarios = next((r for r in all_reports if "Detail Specialist Brainstorm" in r), "")
+        
+        # Business expert does their independent brainstorm first
+        business_scenarios = await self.business_expert.generate_test_plan(input_data)
+        
+        # Consolidation Phase
+        consolidation_prompt = f"""
+        You are the Functional Architect. You have received test scenarios from three specialists:
+        
+        ARCHITECT PRELIMINARY:
+        {architect_scenarios}
+        
+        DETAIL SPECIALIST:
+        {detail_scenarios}
+        
+        BUSINESS EXPERT:
+        {business_scenarios}
+        
+        Requirement: {input_data}
+        
+        Your task is to collaborate and merge these into a single, world-class, production-grade functional test plan.
+        Ensure you include the mauticulous details from the Detail Specialist and the business value from the Business Expert.
+        Remove redundancies and ensure comprehensive coverage.
+        """
+        
+        final_scenarios = await self.functional_architect.chat(consolidation_prompt)
+        
+        # Analyze regression needs
         from ..core.knowledge_base import kb
-        context = kb.get_context_summary(state["input"])
-        regression = await self.functional_agent.analyze_regression_needs(state["input"], context)
+        context = kb.get_context_summary(input_data)
+        regression = await self.functional_architect.analyze_regression_needs(input_data, context)
         
-        report = f"--- Functional Test Scenarios ---\n{scenarios}\n\n--- Regression Analysis ---\n{regression}"
+        report = f"--- Functional Test Scenarios (Collaborative Effort) ---\n{final_scenarios}\n\n--- Regression Analysis ---\n{regression}"
         self._save_artifact("functional_report", report)
 
         # Automated Test Case Upload to TestRail
-        structured_cases = await self.functional_agent.parse_scenarios_to_structured_data(scenarios)
+        structured_cases = await self.functional_architect.parse_scenarios_to_structured_data(final_scenarios)
         if structured_cases:
-            upload_result = await self.functional_agent.upload_skill.run(
+            upload_result = await self.functional_architect.upload_skill.run(
                 section_id=1, # Default section
                 test_cases=structured_cases
             )
             self._save_artifact("testrail_case_upload_status", str(upload_result.output))
         
-        return {"reports": [report], "visited_agents": ["Functional"]}
+        return {"reports": [report], "visited_agents": ["Functional", "Business_Expert"]}
 
     async def _e2e_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node for the E2EAgent."""
