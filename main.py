@@ -14,7 +14,7 @@ from rich.markdown import Markdown
 
 console = Console()
 
-async def run_mission(input_text: str):
+async def run_mission(input_text: str, **kwargs):
     """Triggers a full QA mission via the orchestrator."""
     console.print(f"[bold blue]Starting QA Mission for:[/bold blue] {input_text}\n")
     
@@ -27,6 +27,7 @@ async def run_mission(input_text: str):
         "reports": [],
         "current_task": "start",
         "visited_agents": [],
+        "manual_agents": kwargs.get("manual_agents"),
         "final_report": ""
     }
     
@@ -52,10 +53,12 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Run a QA Mission")
     parser.add_argument("--mission", type=str, help="The QA mission goal")
+    parser.add_argument("--agents", type=str, help="Comma-separated list of manual agents (UnitStatic, Functional, E2E, Security, Performance)")
     parser.add_argument("unnamed_mission", type=str, nargs="?", help="The QA mission goal (positional)")
     
     args = parser.parse_args()
     
     mission = args.mission or args.unnamed_mission or "Implement a new JWT-based authentication system for the user profile service."
+    manual_agents = args.agents.split(",") if args.agents else None
         
-    asyncio.run(run_mission(mission))
+    asyncio.run(run_mission(mission, manual_agents=manual_agents))

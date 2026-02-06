@@ -12,7 +12,9 @@ import {
   UserCheck,
   Layers,
   Glasses,
-  Briefcase
+  Briefcase,
+  ToggleRight,
+  ToggleLeft
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -53,12 +55,26 @@ const AGENT_MAP: Record<string, string[]> = {
   'Performance': ['performance_node'],
 };
 
+interface AgentOption {
+  id: string;
+  label: string;
+}
+
+const AGENT_OPTIONS: AgentOption[] = [
+  { id: 'UnitStatic', label: 'Unit/Static' },
+  { id: 'Functional', label: 'Functional' },
+  { id: 'E2E', label: 'E2E' },
+  { id: 'Security', label: 'Security' },
+  { id: 'Performance', label: 'Performance' },
+];
+
 function App() {
   const [missionInput, setMissionInput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [nodes, setNodes] = useState<NodeState[]>(INITIAL_NODES);
   const [finalReport, setFinalReport] = useState<string | null>(null);
+  const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -72,6 +88,14 @@ function App() {
     setLogs(prev => [...prev, { time, msg, isError }]);
   };
 
+  const toggleAgent = (agentId: string) => {
+    setSelectedAgents(prev =>
+      prev.includes(agentId)
+        ? prev.filter(id => id !== agentId)
+        : [...prev, agentId]
+    );
+  };
+
   const startMission = async () => {
     if (!missionInput) return;
 
@@ -80,12 +104,18 @@ function App() {
     setLogs([]);
     setNodes(INITIAL_NODES);
     addLog(`Initiating mission: ${missionInput}`);
+    if (selectedAgents.length > 0) {
+      addLog(`Manual agent selection: ${selectedAgents.join(', ')}`);
+    }
 
     try {
       const response = await fetch('http://localhost:8000/mission/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: missionInput }),
+        body: JSON.stringify({
+          input: missionInput,
+          selected_agents: selectedAgents.length > 0 ? selectedAgents : null
+        }),
       });
 
       const reader = response.body?.getReader();
@@ -128,26 +158,29 @@ function App() {
             return n;
           });
 
-          // If Lead Planner finishes, activate target specialists
-          if (nodeName === 'lead_planner' && payload.data?.mission?.target_agents) {
-            const targets = payload.data.mission.target_agents as string[];
+          // Activation logic moved to router_node or lead_planner completion
+          if ((nodeName === 'lead_planner' || nodeName === 'router_node') && payload.data?.mission?.target_agents) {
+            // Prioritize local state selectedAgents if mission just started
+            // or use manual_agents from payload if backend confirmed it
+            const targets = (payload.data.manual_agents || (selectedAgents.length > 0 ? selectedAgents : payload.data.mission.target_agents)) as string[];
+
             updated = updated.map(n => {
               const isTarget = Object.entries(AGENT_MAP).some(([cat, ids]) =>
                 targets.includes(cat) && ids.includes(n.id)
               );
-              if (isTarget) return { ...n, status: 'active' as const };
+              // Only mark as active if it was idle
+              if (isTarget && n.status === 'idle') return { ...n, status: 'active' as const };
               return n;
             });
           }
 
-          // If any functional specialist finishes, and it's not the lead planner, 
-          // we check if we should activate the consolidator
+          // Functional consolidation trigger logic
           const functionalSpecs = ['functional_architect_node', 'detail_specialist_node', 'business_expert_node'];
-          const allFunctionalDone = functionalSpecs.every(id =>
-            updated.find(n => n.id === id)?.status === 'completed'
-          );
+          const actualFunctionalNodes = updated.filter(n => functionalSpecs.includes(n.id));
+          const isFunctionalPhaseDone = actualFunctionalNodes.every(n => n.status === 'completed' || n.status === 'idle') &&
+            actualFunctionalNodes.some(n => n.status === 'completed');
 
-          if (allFunctionalDone && updated.find(n => n.id === 'functional_consolidator')?.status === 'idle') {
+          if (isFunctionalPhaseDone && updated.find(n => n.id === 'functional_consolidator')?.status === 'idle') {
             updated = updated.map(n => n.id === 'functional_consolidator' ? { ...n, status: 'active' as const } : n);
           }
 
@@ -185,8 +218,24 @@ function App() {
 
       <div className="dashboard-grid">
         <main className="graph-container">
-          <section className="glass-card mission-input-section">
-            <h2 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>MISSION CONTROL</h2>
+          <section className="glass-card mission-control-section">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ fontSize: '1rem' }}>MISSION CONTROL</h2>
+              <div className="agent-selection" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>SPECIALISTS:</span>
+                {AGENT_OPTIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => toggleAgent(opt.id)}
+                    className={`agent-toggle ${selectedAgents.includes(opt.id) ? 'selected' : ''}`}
+                    disabled={isRunning}
+                  >
+                    {selectedAgents.includes(opt.id) ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <input
                 type="text"
@@ -196,7 +245,7 @@ function App() {
                 onKeyPress={(e) => e.key === 'Enter' && startMission()}
                 disabled={isRunning}
               />
-              <button onClick={startMission} disabled={isRunning || !missionInput}>
+              <button className="primary-btn" onClick={startMission} disabled={isRunning || !missionInput}>
                 {isRunning ? <Activity className="animate-spin" size={20} /> : <Play size={20} />}
               </button>
             </div>
@@ -267,6 +316,30 @@ function App() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        .agent-toggle {
+          background: rgba(255,255,255,0.05);
+          border: 1px solid var(--border-glass);
+          color: var(--text-muted);
+          padding: 0.35rem 0.65rem;
+          border-radius: 6px;
+          font-size: 0.7rem;
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          transition: all 0.2s;
+          cursor: pointer;
+        }
+        .agent-toggle.selected {
+          background: rgba(var(--accent-primary-rgb), 0.15);
+          border-color: var(--accent-primary);
+          color: white;
+        }
+        .agent-toggle:hover:not(:disabled) {
+          background: rgba(255,255,255,0.1);
+        }
+        .primary-btn {
+          padding: 0 1.25rem;
         }
         .markdown-content h1, .markdown-content h2, .markdown-content h3 {
           margin-top: 1.5rem;

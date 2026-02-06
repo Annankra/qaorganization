@@ -54,6 +54,7 @@ class QAOrchestrator:
         
         # Define Nodes
         self.workflow.add_node("lead_planner", self._lead_planner_node)
+        self.workflow.add_node("router_node", self._router_node)
         self.workflow.add_node("unit_static_node", self._unit_static_node)
         self.workflow.add_node("functional_architect_node", self._functional_architect_node)
         self.workflow.add_node("detail_specialist_node", self._detail_specialist_node)
@@ -69,9 +70,12 @@ class QAOrchestrator:
         # Define Edges
         self.workflow.set_entry_point("lead_planner")
         
-        # Conditional dynamic routing
+        # Lead Planner goes to Router
+        self.workflow.add_edge("lead_planner", "router_node")
+        
+        # Conditional dynamic routing from Router
         self.workflow.add_conditional_edges(
-            "lead_planner",
+            "router_node",
             self._route_tasks,
             {
                 "unit_static": "unit_static_node",
@@ -86,17 +90,18 @@ class QAOrchestrator:
             }
         )
         
-        self.workflow.add_edge("unit_static_node", "lead_planner")
+        # Specialists go back to Router (not Lead Planner)
+        self.workflow.add_edge("unit_static_node", "router_node")
         
         # Parallel Fan-in to Consolidator
         self.workflow.add_edge("functional_architect_node", "functional_consolidator")
         self.workflow.add_edge("detail_specialist_node", "functional_consolidator")
         self.workflow.add_edge("business_expert_node", "functional_consolidator")
-        self.workflow.add_edge("functional_consolidator", "lead_planner")
+        self.workflow.add_edge("functional_consolidator", "router_node")
         
-        self.workflow.add_edge("e2e_node", "lead_planner")
-        self.workflow.add_edge("security_node", "lead_planner")
-        self.workflow.add_edge("performance_node", "lead_planner")
+        self.workflow.add_edge("e2e_node", "router_node")
+        self.workflow.add_edge("security_node", "router_node")
+        self.workflow.add_edge("performance_node", "router_node")
         self.workflow.add_edge("reviewer", "evaluator")
         self.workflow.add_edge("evaluator", "finalizer")
         self.workflow.add_edge("finalizer", END)
@@ -108,8 +113,12 @@ class QAOrchestrator:
             return "end"
         
         visited = state.get("visited_agents", [])
+        manual_agents = state.get("manual_agents")
         
-        for agent in mission.target_agents:
+        # Use manual selection if provided, otherwise use AI-planned target_agents
+        targets = manual_agents if manual_agents is not None else mission.target_agents
+        
+        for agent in targets:
             if agent == "UnitStatic" and "UnitStatic" not in visited:
                 return "unit_static"
             if agent == "Functional" and "Functional" not in visited:
@@ -262,10 +271,18 @@ class QAOrchestrator:
         return {"reports": [report]}
 
     async def _lead_planner_node(self, state: QAOrganizationState) -> Dict[str, Any]:
-        """Node for the Lead Agent to analyze and plan."""
+        """Mission Planning: Lead Agent."""
         mission = await self.lead_agent.analyze_and_plan(state["input"])
-        self._save_artifact("mission_plan", str(mission))
-        return {"mission": mission}
+        # Return manual_agents so UI knows they are persisted
+        return {
+            "mission": mission, 
+            "current_task": "routing",
+            "manual_agents": state.get("manual_agents") 
+        }
+
+    async def _router_node(self, state: QAOrganizationState) -> Dict[str, Any]:
+        """Passive node to handle routing without re-planning."""
+        return {"current_task": "routing", "manual_agents": state.get("manual_agents")}
 
     async def _finalizer_node(self, state: QAOrganizationState) -> Dict[str, Any]:
         """Node to aggregate all reports and conclude the mission."""

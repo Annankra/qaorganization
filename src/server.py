@@ -29,12 +29,13 @@ app.add_middleware(
 
 class MissionRequest(BaseModel):
     input: str
+    selected_agents: Optional[List[str]] = None
 
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
 
-async def mission_event_generator(mission_input: str):
+async def mission_event_generator(mission_input: str, mission_input_data: dict):
     """
     Generator that runs the LangGraph and yields state updates and logs.
     """
@@ -46,8 +47,11 @@ async def mission_event_generator(mission_input: str):
         "reports": [],
         "current_task": "start",
         "visited_agents": [],
+        "manual_agents": mission_input_data.get("selected_agents"), # Pass manual selection if any
         "final_report": ""
     }
+    
+    logger.info(f"Initialized mission state with manual_agents: {initial_state['manual_agents']}")
 
     # Signal start
     yield f"data: {json.dumps({'event': 'start', 'message': f'Starting mission: {mission_input}'})}\n\n"
@@ -92,7 +96,7 @@ async def stream_mission(request: MissionRequest):
     Endpoint that returns a Server-Sent Events (SSE) stream of the mission execution.
     """
     return StreamingResponse(
-        mission_event_generator(request.input),
+        mission_event_generator(request.input, request.dict()),
         media_type="text/event-stream"
     )
 

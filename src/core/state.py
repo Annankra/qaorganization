@@ -1,4 +1,4 @@
-from typing import TypedDict, List, Annotated
+from typing import TypedDict, List, Annotated, Optional
 import operator
 from ..agents.qa_lead_agent import TestMission
 
@@ -21,3 +21,6 @@ class QAOrganizationState(TypedDict):
     
     # Final summary report
     final_report: str
+    
+    # Manual agent selection override
+    manual_agents: Optional[List[str]]
